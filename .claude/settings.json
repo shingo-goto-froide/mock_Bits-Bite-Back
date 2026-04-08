@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -Command \"$p = ($env:CLAUDE_TOOL_INPUT | ConvertFrom-Json).path; if ($p -match [char]46 + 'cs$') { Write-Host '\ud83d\udcdd [実装] .cs書き込み完了。コンパイル確認 → git add してください' } elseif ($p -match 'Docs') { Write-Host '\ud83d\udcc4 [ドキュメント] 更新完了。PROJECT.md の変更履歴追記を忘れずに' } elseif ($p -match 'gen-scripts') { Write-Host '\u2699\ufe0f [設計完了] 並列グループ更新済み。git commit して実装フェーズへ' }\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -Command \"Write-Host '\ud83d\udd1a 応答終了。CLAUDE.md のGitコミットタイミングを確認してください'\""
+          }
+        ]
+      }
+    ]
+  }
+}
