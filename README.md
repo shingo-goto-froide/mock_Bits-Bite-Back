@@ -115,7 +115,7 @@ UIテキストは TextMeshPro（TMP）を使用。日本語表示にはフォン
 | `README.md` | 本ファイル（操作手順） |
 | `.claude/settings.json` | 権限・Hooks設定 |
 | `.claude/rules/` 全ファイル | Claudeへの指示（行動ルール・テンプレート等） |
-| `.claude/agents/` 全ファイル | 専門家エージェント定義 |
+| `.claude/agents/` | 専門家エージェント（必要時に追加。初期は空） |
 | `.claude/commands/` の大半 | スラッシュコマンド |
 
 ### プロジェクトごとに生成されるファイル（テンプレートに含まない）
@@ -238,25 +238,12 @@ claude          # Claude Code を起動
 
 ---
 
-## エージェントを直接呼ぶ場合
-
-コマンドを使わず専門家に直接依頼することもできます：
-
-```
-@spec-writer    仕様書を一緒に作りたい・修正したい
-@scene-builder  シーンを構築・変更したい
-@unity-debugger このバグを調査してほしい
-@doc-updater    ドキュメントと実装の差分を確認してほしい
-```
-
----
-
 ## .claude/ 構成（参考）
 
 ```
 .claude/
 ├── rules/       ← Claudeへの指示（自動ロード）
-├── agents/      ← 専門家エージェント
+├── agents/      ← 必要時に追加（初期は空）
 ├── commands/    ← スラッシュコマンド（/gen-scripts 等）
 └── skills/      ← 将来用（現在は commands で対応）
 ```

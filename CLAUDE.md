@@ -19,11 +19,7 @@
 │   ├── 05-templates.md    ← 各種テンプレート
 │   ├── 06-repo-ops.md     ← テンプレートリポジトリ運用・gen-scripts並列グループ
 │   └── 07-troubleshooting.md ← セッションプロンプト集
-├── agents/                ← 専門家エージェント（独立コンテキスト）
-│   ├── spec-writer.md     ← 仕様書の対話的作成・更新
-│   ├── scene-builder.md   ← シーン構築・変更
-│   ├── unity-debugger.md  ← バグ調査・修正
-│   └── doc-updater.md     ← ドキュメント差分確認・更新
+├── agents/                ← 必要になったら追加（初期は空）
 ├── commands/              ← 人が起動するワークフロー（/コマンド名）
 │   ├── new-spec.md        ← 企画フェーズ起点
 │   ├── gen-design.md      ← 設計フェーズ起点
@@ -71,15 +67,6 @@
 | `/check-diff` | テスト | 実装とドキュメントの差分確認 |
 | `/debug` | テスト | バグ調査・修正 |
 | `/update-docs` | 共通 | Docs一式を更新 |
-
-### エージェント一覧（専門家に直接依頼 or コマンドから委譲）
-
-| エージェント | 役割 |
-|---|---|
-| `@spec-writer` | 仕様書の対話的作成・更新 |
-| `@scene-builder` | シーン構築・変更 |
-| `@unity-debugger` | バグ調査・修正 |
-| `@doc-updater` | ドキュメント差分確認・更新 |
 
 ---
 

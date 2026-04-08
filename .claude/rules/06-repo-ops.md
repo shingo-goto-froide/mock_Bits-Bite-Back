@@ -18,11 +18,7 @@
     │   ├── 05-templates.md
     │   ├── 06-repo-ops.md
     │   └── 07-troubleshooting.md
-    ├── agents/                      ← 専門家エージェント（そのまま使える）
-    │   ├── spec-writer.md
-    │   ├── scene-builder.md
-    │   ├── unity-debugger.md
-    │   └── doc-updater.md
+    ├── agents/                      ← 必要時に追加（初期は空）
     ├── commands/
     │   ├── new-spec.md              ← 設計に依存しない（そのまま使える）
     │   ├── gen-design.md            ← 設計に依存しない（そのまま使える）
