@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fc059c975a980c4e9af869abf8daae5, type: 3}
+  m_Name: Zombie
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDataSO
+  monsterType: 3
+  monsterName: "\u30BE\u30F3\u30D3"
+  baseHp: 35
+  baseAttack: 1
+  speed: 2
+  range: 1
+  slotSize: 1
+  attackType: 0
+  isPenetrate: 0
+  abilityDescription: "\u524D\u5F8C\u306E\u5473\u65B9\u306B\u6BD2\u653B\u6483\uFF08\u30BF\u30FC\u30F3\u958B\u59CB\u6642HP-3\uFF09\u3092\u4ED8\u4E0E"
+  recipeMaterials:
+  - type: 1
+    amount: 2
+  - type: 3
+    amount: 1

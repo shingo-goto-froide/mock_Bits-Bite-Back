@@ -20,7 +20,7 @@ public class BarrierMageAbility : AbilityBase
         if (frontAlly != null)
         {
             frontAlly.AddStatusEffect(new StatusEffect(StatusEffectType.MagicBarrier, -1));
-            context.AddLog($"{owner.monster.baseData.monsterName}の効果: {frontAlly.monster.baseData.monsterName}に魔法バリアを付与");
+            context.AddLog($"{frontAlly.monster.baseData.monsterName}に魔法バリアを付与");
         }
     }
 }

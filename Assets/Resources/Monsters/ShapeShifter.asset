@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fc059c975a980c4e9af869abf8daae5, type: 3}
+  m_Name: ShapeShifter
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDataSO
+  monsterType: 7
+  monsterName: "\u30B7\u30A7\u30A4\u30D7\u30B7\u30D5\u30BF\u30FC"
+  baseHp: 25
+  baseAttack: 1
+  speed: 4
+  range: 1
+  slotSize: 1
+  attackType: 0
+  isPenetrate: 0
+  abilityDescription: "\u884C\u52D5\u6642\u306B1\u3064\u5F8C\u308D\u306E\u9B54\u7269\u306E\u30B9\u30C6\u30FC\u30BF\u30B9\u3068\u7279\u6B8A\u52B9\u679C\u3092\u30B3\u30D4\u30FC"
+  recipeMaterials:
+  - type: 0
+    amount: 1
+  - type: 1
+    amount: 1
+  - type: 3
+    amount: 1

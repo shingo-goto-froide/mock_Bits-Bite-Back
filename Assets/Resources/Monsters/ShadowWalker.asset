@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fc059c975a980c4e9af869abf8daae5, type: 3}
+  m_Name: ShadowWalker
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDataSO
+  monsterType: 4
+  monsterName: "\u30B7\u30E3\u30C9\u30A6\u30A6\u30A9\u30FC\u30AB\u30FC"
+  baseHp: 20
+  baseAttack: 1
+  speed: 5
+  range: 0
+  slotSize: 1
+  attackType: 0
+  isPenetrate: 0
+  abilityDescription: "\u653B\u6483\u6642\u3001\u6575\u968A\u5217\u306E\u30E9\u30F3\u30C0\u30E0\u306A\u4F4D\u7F6E\u306E\u30E6\u30CB\u30C3\u30C8\u3092\u653B\u6483"
+  recipeMaterials:
+  - type: 0
+    amount: 2
+  - type: 2
+    amount: 1

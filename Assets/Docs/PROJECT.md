@@ -54,6 +54,9 @@
 - 「TLS Allocator ALLOC_TEMP_TLS has unfreed allocations」はUnity内部の警告。自作コードとは無関係。
 - InputSystem を使う場合は StandaloneInputModule ではなく InputSystemUIInputModule を使うこと。
 - SampleScene は使用しない。
+- UIテキストは TextMeshPro（TMP）を使用。レガシー `Text` は使わないこと。
+- 日本語フォント: `Assets/Fonts/NotoSansJP-Regular SDF.asset`（Padding:10%, AutoSizing, SDFAA, Fast）
+- TMP Settings のデフォルトフォントは NotoSansJP-Regular SDF に設定済み。
 
 ### プロジェクト固有（設計フェーズ完了後に追記）
 - 探索フェーズを後から差し込める設計にすること
@@ -79,3 +82,6 @@
 | 日付 | 対象 | 内容 |
 |---|---|---|
 | 2026-04-08 | 仕様書・PROJECT.md | 初版作成 |
+| 2026-04-08 | PrepareScene | タブ式UI実装（3カラム→タブ切替）、カード構造統一 |
+| 2026-04-08 | BattleScene | 味方右・敵左配置、前衛対峙レイアウト、報酬グリッド化 |
+| 2026-04-08 | 全シーン | TMP化・NotoSansJP導入・UI設計プロセス追加 |

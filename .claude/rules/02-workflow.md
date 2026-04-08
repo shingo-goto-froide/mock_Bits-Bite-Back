@@ -1,10 +1,10 @@
 ﻿# フェーズ詳細・コマンド一覧
 
-> ### Claude Codeについて（CLI専用機能）
-> **Claude Code** はターミナルから起動するCLIツール。
+> ### Claude Codeについて
+> **Claude Code** はターミナル・VS Code・デスクトップアプリから起動できる。
 > プロジェクトルートで `claude` コマンドを実行し、対話形式で操作する。
 > `.claude/commands/` に置いたMarkdownが `/コマンド名` として使用できる。
-> **Claude Desktopでは使用不可。** Claude DesktopはUnityMCPとの接続専用として使い分ける。
+> MCP サーバー（UnityMCP等）は `.claude/settings.json` で設定すれば CLI/VS Code/Desktop どこからでも使用可能。
 
 ## 1. 企画フェーズ
 **使用ツール:** Claude Code CLI
@@ -34,7 +34,10 @@
 1. `/gen-design` を実行
 2. ゲームデザイン設計を確認する（難易度曲線・フィードバックループ・バランス数値・MVPの定義）
 3. 技術設計を確認する（クラス構成・依存関係・メソッド定義）
-4. 人が設計書を確認して「コミットして」と依頼
+4. **UI設計を確認する**（レイアウト方針・カード構成・共通コンポーネント）
+5. 人が設計書を確認して「コミットして」と依頼
+
+> ⚠️ UI設計はシーン構築の前に確定させること。レイアウト方針（タブ/カラム/グリッド等）やカード構造（左画像+右テキスト等）が未定のままシーン構築に入ると、大幅な手戻りが発生する。
 
 ---
 
@@ -45,9 +48,12 @@
 
 ### 3a. コアループ実装（まず動かす）
 1. `/gen-scripts core` を実行（コアループに必要なスクリプトのみ生成）
-2. `/gen-scene core` を実行（コアループが確認できる最小限のシーン）
+2. `/gen-scene core` を実行（UnityMCP経由でシーン構築）
 3. Unityで実行して動作確認
 4. 「コミットして」と依頼 → **プレイテストへ（3b）**
+
+> ⚠️ シーン構築は **UnityMCP 経由** で行うこと。
+> コードのみでのUI構築は視覚的フィードバックがなく、レイアウト崩れの原因になる。
 
 ### 3b. プレイテスト ← 重要
 `/playtest` を実行して面白さを検証する。
@@ -56,7 +62,7 @@
 
 ### 3c. 残り実装（面白さが確認できたら）
 1. `/gen-scripts full` を実行（残りのスクリプトを生成、core生成済みはスキップ）
-2. `/gen-scene full` を実行（残りのシーン・UIを構築）
+2. `/gen-scene full` を実行（UnityMCP経由でシーン構築）
 3. 人が全体を確認して「コミットして」と依頼
 
 ---
@@ -99,13 +105,17 @@
 ### コマンドとツールの使い分け
 
 ```
-企画フェーズ         → Claude Code CLI（/new-spec）
-設計フェーズ         → Claude Code CLI（/gen-design）
-実装フェーズ（前半） → Claude Code CLI（/gen-scripts core → /gen-scene core）
-プレイテスト         → Claude Desktop（UnityMCP）+ Claude Code CLI（/playtest）
-実装フェーズ（後半） → Claude Code CLI（/gen-scripts full → /gen-scene full）
-テストフェーズ       → Claude Desktop（UnityMCP）+ Claude Code CLI
+企画フェーズ         → /new-spec
+設計フェーズ         → /gen-design
+スクリプト生成       → /gen-scripts core / full
+シーン構築           → /gen-scene core / full（UnityMCP必須）
+プレイテスト         → /playtest（UnityMCP推奨）
+テストフェーズ       → /debug, /check-diff（UnityMCP推奨）
 ```
+
+> **ツール使い分けの原則：**
+> - **コード生成・ファイル操作・Git** → MCP不要（CLIの標準機能で十分）
+> - **シーン構築・UI配置・動作確認** → UnityMCP必須（コードのみだとレイアウトが崩れる）
 
 ---
 

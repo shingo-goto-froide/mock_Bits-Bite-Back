@@ -325,7 +325,7 @@ public class BattleManager : MonoBehaviour
         if (died)
             target.isAlive = false;
 
-        AddLog($"{attacker.monster.baseData.monsterName} → {target.monster.baseData.monsterName} に{finalDamage}ダメージ" +
+        AddLog($"{attacker.monster.baseData.monsterName} → {target.monster.baseData.monsterName}に{finalDamage}ダメージ" +
                (died ? "（撃破！）" : $"（残HP:{target.monster.currentHp}）"));
 
         return finalDamage;
@@ -444,13 +444,13 @@ public class BattleManager : MonoBehaviour
 
         if (result == BattleResult.Victory)
         {
-            AddLog("=== 勝利！ ===");
+            AddLog("=== 勝利！敵を全滅させた！ ===");
             // OnBattleEnd能力を発動（骸骨僧侶の回復等）
             ExecuteAbilitiesWithTrigger(AbilityTrigger.OnBattleEnd);
         }
         else
         {
-            AddLog("=== 全滅… ===");
+            AddLog("=== 全滅…味方が全員倒れた… ===");
         }
 
         OnBattleEndEvent?.Invoke(result);

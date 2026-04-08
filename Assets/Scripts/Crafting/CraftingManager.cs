@@ -8,6 +8,14 @@ public class CraftingManager : MonoBehaviour
 
     public MonsterDataSO[] AllMonsterData => allMonsterData;
 
+    private void Awake()
+    {
+        if (balance == null)
+            balance = Resources.Load<GameBalanceSO>("GameBalance");
+        if (allMonsterData == null || allMonsterData.Length == 0)
+            allMonsterData = Resources.LoadAll<MonsterDataSO>("Monsters");
+    }
+
     public List<MonsterDataSO> GetCraftableMonsters(MaterialInventory inventory)
     {
         var craftable = new List<MonsterDataSO>();

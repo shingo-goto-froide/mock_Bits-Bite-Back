@@ -24,7 +24,7 @@ public class WraithAbility : AbilityBase
             lastAlly.monster.maxHp += 10;
             lastAlly.monster.currentHp += 10;
             lastAlly.monster.currentAttack += 3;
-            context.AddLog($"{owner.monster.baseData.monsterName}の魂: {lastAlly.monster.baseData.monsterName}のHP+10, 攻撃力+3");
+            context.AddLog($"{owner.monster.baseData.monsterName}の魂が{lastAlly.monster.baseData.monsterName}を強化（HP+10, ATK+3）");
         }
     }
 

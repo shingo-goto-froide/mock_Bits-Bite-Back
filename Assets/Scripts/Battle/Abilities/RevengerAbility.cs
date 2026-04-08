@@ -20,6 +20,6 @@ public class RevengerAbility : AbilityBase
         owner.monster.maxHp += 4;
         owner.monster.currentHp += 4;
         owner.monster.currentAttack += 2;
-        context.AddLog($"{owner.monster.baseData.monsterName}の復讐: HP+4, 攻撃力+2 (累計{buffedDeathCount}体)");
+        context.AddLog($"{owner.monster.baseData.monsterName}が強化！HP+4 ATK+2（累計{buffedDeathCount}回）");
     }
 }

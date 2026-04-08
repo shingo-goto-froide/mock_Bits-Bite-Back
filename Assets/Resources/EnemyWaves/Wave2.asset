@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 197a49e985ce54d459d424b7a331bcc3, type: 3}
+  m_Name: Wave2
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyWaveSO
+  waveNumber: 2
+  enemies:
+  - monsterData: {fileID: 11400000, guid: e84366a6d1ffd57459ea3ab9833c1ba7, type: 2}
+    level: 1
+  - monsterData: {fileID: 11400000, guid: d68c30f0acc61784aa65db78992db6fb, type: 2}
+    level: 1
+  - monsterData: {fileID: 11400000, guid: d68c30f0acc61784aa65db78992db6fb, type: 2}
+    level: 1

@@ -86,13 +86,14 @@
 ## ツールの使い分け
 
 ```
-企画         → Claude Code CLI（/new-spec）
-設計         → Claude Code CLI（/gen-design）
-実装（前半） → Claude Code CLI（/gen-scripts core → /gen-scene core）
-プレイテスト → Claude Desktop（UnityMCP）+ Claude Code CLI（/playtest）
-実装（後半） → Claude Code CLI（/gen-scripts full → /gen-scene full）
-テスト       → Claude Desktop（UnityMCP）+ Claude Code CLI
+企画           → /new-spec
+設計           → /gen-design
+スクリプト生成 → /gen-scripts core / full
+シーン構築     → /gen-scene core / full（UnityMCP必須）
+プレイテスト   → /playtest（UnityMCP推奨）
+テスト         → /debug, /check-diff（UnityMCP推奨）
 ```
 
-> **Claude Desktop** は UnityMCP との接続専用。
-> **Claude Code CLI** はファイル生成・Git操作・コマンド実行専用。
+> **コード生成・ファイル操作・Git** → MCP不要（CLIの標準機能で十分）
+> **シーン構築・UI配置・動作確認** → UnityMCP必須（コードのみだとレイアウトが崩れる）
+> MCP サーバーは CLI / VS Code / Desktop どこからでも使用可能。

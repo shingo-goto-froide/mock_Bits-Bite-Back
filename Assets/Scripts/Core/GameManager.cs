@@ -46,18 +46,59 @@ public class GameManager : MonoBehaviour
 
         Inventory = new MaterialInventory();
         OwnedMonsters = new List<MonsterInstance>();
+
+        LoadReferencesIfMissing();
+
+        // 同一GameObjectのマネージャーを取得
+        if (battleManager == null) battleManager = GetComponent<BattleManager>();
+        if (craftingManager == null) craftingManager = GetComponent<CraftingManager>();
+        if (formationManager == null) formationManager = GetComponent<FormationManager>();
+
+        // マネージャーの初期化
+        if (formationManager != null && balance != null)
+            formationManager.Init(balance);
     }
 
-    private void Start()
+    private void LoadReferencesIfMissing()
     {
-        if (battleManager != null)
-            battleManager.OnBattleEndEvent += OnBattleEnd;
+        if (balance == null)
+            balance = Resources.Load<GameBalanceSO>("GameBalance");
+
+        if (allMonsterData == null || allMonsterData.Length == 0)
+        {
+            var loaded = Resources.LoadAll<MonsterDataSO>("Monsters");
+            if (loaded.Length > 0)
+                allMonsterData = loaded;
+        }
+
+        if (enemyWaves == null || enemyWaves.Length == 0)
+        {
+            var loaded = Resources.LoadAll<EnemyWaveSO>("EnemyWaves");
+            if (loaded.Length > 0)
+            {
+                System.Array.Sort(loaded, (a, b) => a.waveNumber.CompareTo(b.waveNumber));
+                enemyWaves = loaded;
+            }
+        }
+
+        if (tutorialMonsterData == null && allMonsterData != null)
+        {
+            foreach (var data in allMonsterData)
+            {
+                if (data.monsterType == MonsterType.Skeleton)
+                {
+                    tutorialMonsterData = data;
+                    break;
+                }
+            }
+        }
+
+        if (balance == null)
+            Debug.LogError("[GameManager] GameBalanceSO が見つかりません。Resources/GameBalance に配置してください。");
     }
 
     private void OnDestroy()
     {
-        if (battleManager != null)
-            battleManager.OnBattleEndEvent -= OnBattleEnd;
         if (Instance == this)
             Instance = null;
     }
@@ -112,28 +153,6 @@ public class GameManager : MonoBehaviour
         battleManager.StartBattle();
     }
 
-    private void OnBattleEnd(BattleResult result)
-    {
-        if (result == BattleResult.Victory)
-        {
-            CurrentWave++;
-            GiveReward();
-
-            if (CurrentWave >= enemyWaves.Length)
-            {
-                GameClear();
-            }
-            else
-            {
-                TransitionTo(GamePhase.Reward);
-            }
-        }
-        else
-        {
-            GameOver();
-        }
-    }
-
     public void GiveReward()
     {
         int materialCount = balance.rewardBaseMaterials + CurrentWave * balance.rewardPerWaveBonus;
@@ -173,6 +192,11 @@ public class GameManager : MonoBehaviour
         Debug.Log("[GameManager] ゲームクリア！");
         battleManager.ClearBattle();
         OnGameClear?.Invoke();
+    }
+
+    public void AdvanceWave()
+    {
+        CurrentWave++;
     }
 
     public void RestartGame()

@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fc059c975a980c4e9af869abf8daae5, type: 3}
+  m_Name: BarrierMage
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDataSO
+  monsterType: 10
+  monsterName: "\u7D50\u754C\u5E2B"
+  baseHp: 25
+  baseAttack: 2
+  speed: 3
+  range: 1
+  slotSize: 1
+  attackType: 1
+  isPenetrate: 0
+  abilityDescription: "\u30D0\u30C8\u30EB\u958B\u59CB\u6642\u3001\u524D\u885B\u306B\u30C0\u30E1\u30FC\u30B8\u534A\u6E1B\u306E\u9B54\u6CD5\u30D0\u30EA\u30A2"
+  recipeMaterials:
+  - type: 2
+    amount: 2
+  - type: 1
+    amount: 1

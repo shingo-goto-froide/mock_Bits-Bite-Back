@@ -22,7 +22,7 @@ public class MartyrAbility : AbilityBase
 
             ally.monster.Heal(healAmount);
             owner.monster.TakeDamage(healAmount);
-            context.AddLog($"{owner.monster.baseData.monsterName}が{ally.monster.baseData.monsterName}にHP{healAmount}を譲渡");
+            context.AddLog($"{owner.monster.baseData.monsterName}がHPを{healAmount}{ally.monster.baseData.monsterName}に分配");
 
             if (!owner.monster.IsAlive())
             {

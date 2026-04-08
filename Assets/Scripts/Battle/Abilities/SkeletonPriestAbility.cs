@@ -17,7 +17,7 @@ public class SkeletonPriestAbility : AbilityBase
             if (!ally.isAlive) continue;
             int healAmount = Mathf.Max(1, Mathf.FloorToInt(ally.monster.maxHp * healRate));
             ally.monster.Heal(healAmount);
-            context.AddLog($"{owner.monster.baseData.monsterName}の効果: {ally.monster.baseData.monsterName}のHPを{healAmount}回復");
+            context.AddLog($"味方全体をHP{healAmount}回復（{ally.monster.baseData.monsterName}）");
         }
     }
 

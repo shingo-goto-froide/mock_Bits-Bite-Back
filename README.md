@@ -1,6 +1,6 @@
 ﻿# Unity モック制作フロー
 
-> このリポジトリは Claude Code CLI + Claude Desktop（UnityMCP）を使ったUnityゲームのモック制作テンプレートです。
+> このリポジトリは Claude Code + Unity MCP（公式）を使ったUnityゲームのモック制作テンプレートです。
 > このREADMEは**人間向けの操作手順**です。Claudeへの指示は `CLAUDE.md` と `.claude/` を参照してください。
 
 ---
@@ -10,37 +10,50 @@
 | ツール | 確認コマンド | 用途 |
 |---|---|---|
 | Unity Hub + Unity Editor | Unity Hubから起動 | ゲーム開発 |
-| Claude Desktop | タスクトレイに表示されているか確認 | UnityMCPとの接続・プレイテスト |
-| Claude Code CLI | `claude --version` | 設計・実装フェーズのCLI操作 |
+| Unity MCP（公式） | Project Settings → AI に表示 | Claude から Unity を操作 |
+| Claude Code CLI | `claude --version` | 設計・実装・シーン構築 |
 | uv | `uvx --version` | git MCPの実行に必要 |
 | git MCP | `claude mcp list` に `git` が表示されるか | Claude CodeからGitを操作 |
 
 ### 初回セットアップ
 
-**1. Claude Desktop**
-https://claude.ai/download からインストール。
-
-**2. UnityMCP**
-Unity Package Manager → Add package from git URL：
-```
-https://github.com/justinpbarnett/unity-mcp.git
-```
-インストール後にUnityエディタ上でセットアップ画面が表示される。指示に従い `claude_desktop_config.json` にMCPサーバーを追加する。
-接続確認：Claude Desktopで「Unity MCPに繋がってる？」と聞いてエディタ状態が返ればOK。
-
-**3. Claude Code CLI**
+**1. Claude Code CLI**
 ```powershell
 npm install -g @anthropic-ai/claude-code
 ```
 Node.js が必要。未インストールの場合は https://nodejs.org/ からインストール。
 
-**4. uv（git MCP の前提条件）**
+**2. Unity MCP（公式パッケージ）**
+
+Unity の公式 MCP パッケージを導入する。
+
+1. Unity Editor を開く
+2. **Package Manager** → **Install package by name** → `com.unity.ai.assistant` を入力してインストール
+3. **Project Settings → AI** が追加されるので開く
+4. **Unity MCP → Integrations** で使用する AI ツールの **Configure** ボタンを押す
+5. Unity MCP で以下の Tools を有効にする：
+
+| Tool | 必要度 | 用途 |
+|---|---|---|
+| Unity_ManageScene | 必須 | シーン操作 |
+| Unity_ManageGameObject | 必須 | GameObject 操作 |
+| Unity_ManageAsset | 推奨 | アセット管理 |
+| Unity_ReadConsole | 推奨 | コンソール読み取り |
+| Unity_CreateScript | 推奨 | スクリプト生成 |
+| Unity_ManageEditor | 推奨 | エディタ操作 |
+
+接続確認：Claude で「Unity MCP に繋がってる？」と聞いてエディタ状態が返ればOK。
+
+> 参考記事：https://note.com/oshimu/n/n5d90a841c1a4
+> 公式ドキュメント：https://docs.unity3d.com/Packages/com.unity.ai.assistant@2.2/manual/index.html
+
+**3. uv（git MCP の前提条件）**
 ```powershell
 winget install astral-sh.uv
 ```
 インストール後ターミナルを再起動して `uvx --version` で確認。
 
-**5. git MCP**
+**4. git MCP**
 `~/.claude.json` の `projects` キーの直前に以下を追加：
 ```json
 "mcpServers": {
@@ -52,12 +65,41 @@ winget install astral-sh.uv
 ```
 確認：`claude mcp list` に `git` が表示されればOK。
 
+**5. TextMeshPro 日本語フォント**
+
+UIテキストは TextMeshPro（TMP）を使用。日本語表示にはフォントアセットの作成が必要。
+
+1. 日本語フォント（`.ttf` / `.otf`）を `Assets/Fonts/` に配置
+   - 推奨: [Noto Sans JP](https://fonts.google.com/noto/specimen/Noto+Sans+JP)（Regular）
+2. **Window → TextMeshPro → Font Asset Creator** を開く
+3. 以下の設定でフォントアセットを生成：
+
+| 項目 | 設定値 |
+|---|---|
+| Source Font File | NotoSansJP-Regular |
+| Sampling Point Size | Auto Sizing |
+| Padding | 10% |
+| Packing Method | Fast |
+| Atlas Resolution | 4096 x 4096 |
+| Character Set | Custom Characters |
+| Render Mode | SDFAA |
+
+4. **Custom Character List** にプロジェクトで使用する文字を入力
+   - 基本英数記号 + ひらがな + カタカナ + ゲームUIで使う漢字
+   - プロジェクトごとに必要な文字が異なるため、UIテキストで使う文字を網羅すること
+5. **Save SDF Font Asset** → `Assets/Fonts/` に保存
+6. **Project Settings → TextMesh Pro → Settings** でデフォルトフォントを生成したアセットに変更
+
+> ⚠️ フォントアセット（`.asset`）はGit管理に含めること。`.ttf` は LFS 推奨。
+
 ### セットアップ完了チェックリスト
-- [ ] Claude Desktop が起動する
-- [ ] Unity + UnityMCP が接続できる
 - [ ] `claude --version` が表示される
+- [ ] Unity MCP がインストール済み（Project Settings → AI に表示）
+- [ ] Unity MCP の Tools が有効になっている
+- [ ] Claude から Unity の操作ができる
 - [ ] `uvx --version` が表示される
 - [ ] `claude mcp list` に `git` が表示される
+- [ ] TMP 日本語フォントアセットが `Assets/Fonts/` に存在する
 
 ---
 
@@ -134,28 +176,30 @@ claude          # Claude Code を起動
 ---
 
 ### ③ 実装フェーズ前半（コアループ）
-**ツール：** Claude Code CLI
+**ツール：** Claude Code CLI（Unity MCP 必須）
 
 ```
-/gen-scripts    # スクリプト一括生成
-/gen-scene      # シーン構築
+/gen-scripts core   # コアループのスクリプト生成
+/gen-scene core     # シーン構築（Unity MCP 経由）
 ```
 
-1. `/gen-scripts` を打つ → `Assets/Scripts/` にスクリプトが生成される
-2. `/gen-scene` を打つ → シーンが構築される
+1. `/gen-scripts core` を打つ → `Assets/Scripts/` にスクリプトが生成される
+2. `/gen-scene core` を打つ → Unity MCP 経由でシーンが構築される
 3. **Unity エディタで再生ボタンを押して動作確認する**
 4. 「コミットして」と依頼 → プレイテストへ
+
+> ⚠️ シーン構築は Unity MCP 経由で行うこと。コードのみだと UI レイアウトが崩れる。
 
 ---
 
 ### ④ プレイテスト ⚠️ 最重要
-**ツール：** Claude Desktop（UnityMCP）+ Claude Code CLI
+**ツール：** Claude Code CLI（Unity MCP 推奨）
 
 ```
 /playtest       # 面白さを検証
 ```
 
-1. **Claude Desktop を開いた状態で Unity を再生して実際に遊ぶ**
+1. **Unity を再生して実際に遊ぶ**
 2. `/playtest` を打つ → Claudeと一緒に面白さを検証する
 3. 判断する：
    - ✅ **面白い** → 実装フェーズ後半へ進む
@@ -166,21 +210,21 @@ claude          # Claude Code を起動
 ---
 
 ### ⑤ 実装フェーズ後半（残り実装）
-**ツール：** Claude Code CLI
+**ツール：** Claude Code CLI（Unity MCP 必須）
 
 ```
-/gen-scripts    # 残りのスクリプト生成
-/gen-scene      # シーン更新
+/gen-scripts full   # 残りのスクリプト生成
+/gen-scene full     # シーン更新（Unity MCP 経由）
 ```
 
-1. `/gen-scripts` → `/gen-scene` を再度実行
+1. `/gen-scripts full` → `/gen-scene full` を実行
 2. 最低限のUI・フィードバックも追加する（演出は最小限でOK）
 3. 全体を確認して「コミットして」と依頼
 
 ---
 
 ### ⑥ テストフェーズ
-**ツール：** Claude Desktop（UnityMCP）+ Claude Code CLI
+**ツール：** Claude Code CLI（Unity MCP 推奨）
 
 **Unity で遊びながら気になった点をClaudeに伝えるだけ。**
 
@@ -237,7 +281,8 @@ claude          # Claude Code を起動
 
 | 問題 | 対処 |
 |---|---|
-| UnityMCP が繋がらない | Unity エディタが起動しているか確認 → Claude Desktop を再起動 |
+| Unity MCP が繋がらない | Unity エディタが起動しているか確認 → Project Settings → AI で Tools が有効か確認 |
+| Unity MCP の Tools が表示されない | `com.unity.ai.assistant` が正しくインストールされているか Package Manager で確認 |
 | git MCP が動かない | `claude mcp list` で `git` が表示されるか確認 |
 | Hooks エラーが出る | 「Continue without these settings」で起動 → 「settings.jsonを修正して」と依頼 |
 

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fc059c975a980c4e9af869abf8daae5, type: 3}
+  m_Name: GraveKeeper
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDataSO
+  monsterType: 11
+  monsterName: "\u5893\u5B88"
+  baseHp: 35
+  baseAttack: 3
+  speed: 2
+  range: 1
+  slotSize: 1
+  attackType: 0
+  isPenetrate: 0
+  abilityDescription: "\u6B7B\u4EA1\u6642\u306B\u3053\u306E\u968E\u5C64\u3067\u6B7B\u3093\u3060\u4ED6\u306E\u5473\u65B9\u3092\u5168\u3066\u5FA9\u6D3B"
+  recipeMaterials:
+  - type: 3
+    amount: 2
+  - type: 4
+    amount: 1
+  - type: 0
+    amount: 1
