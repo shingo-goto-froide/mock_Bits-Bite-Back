@@ -175,7 +175,12 @@ public class GameManager : MonoBehaviour
 
     public void ReturnToPrepare()
     {
-        // バトル後のHP状態をMonsterInstanceに反映済み（BattleUnit経由で直接操作）
+        // HP0の魔物をHP1で復帰させる
+        foreach (var monster in OwnedMonsters)
+        {
+            if (monster.currentHp <= 0)
+                monster.currentHp = 1;
+        }
         battleManager.ClearBattle();
         TransitionTo(GamePhase.Prepare);
     }
@@ -213,5 +218,38 @@ public class GameManager : MonoBehaviour
     public void RemoveMonster(MonsterInstance monster)
     {
         OwnedMonsters.Remove(monster);
+    }
+
+    // === デバッグ用 ===
+
+    public void DebugMaxMaterials()
+    {
+        foreach (MaterialType type in System.Enum.GetValues(typeof(MaterialType)))
+            Inventory.Add(type, 99 - Inventory.GetAmount(type));
+    }
+
+    public void DebugAddAllMonsters()
+    {
+        foreach (var data in allMonsterData)
+            OwnedMonsters.Add(new MonsterInstance(data));
+    }
+
+    public void DebugHealAll()
+    {
+        foreach (var m in OwnedMonsters)
+        {
+            m.currentHp = m.maxHp;
+        }
+    }
+
+    public void DebugClearMonsters()
+    {
+        OwnedMonsters.Clear();
+        formationManager.Clear();
+    }
+
+    public void DebugSetWave(int wave)
+    {
+        CurrentWave = Mathf.Clamp(wave, 0, enemyWaves.Length - 1);
     }
 }

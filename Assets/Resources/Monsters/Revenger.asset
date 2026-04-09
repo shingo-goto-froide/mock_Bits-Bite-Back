@@ -17,7 +17,7 @@ MonoBehaviour:
   baseHp: 25
   baseAttack: 5
   speed: 3
-  range: 3
+  range: 4
   slotSize: 1
   attackType: 0
   isPenetrate: 1

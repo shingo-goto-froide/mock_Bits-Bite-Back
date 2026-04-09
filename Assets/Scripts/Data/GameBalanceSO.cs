@@ -11,6 +11,7 @@ public class GameBalanceSO : ScriptableObject
 
     [Header("状態異常")]
     public int poisonDamage = 3;
+    [Range(0f, 1f)] public float poisonChance = 0.3f;
     [Range(0f, 1f)] public float stunChance = 0.3f;
     [Range(0f, 1f)] public float magicBarrierReduction = 0.5f;
 

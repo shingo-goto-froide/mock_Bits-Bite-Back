@@ -21,6 +21,7 @@ public class BarrierMageAbility : AbilityBase
         {
             frontAlly.AddStatusEffect(new StatusEffect(StatusEffectType.MagicBarrier, -1));
             context.AddLog($"{frontAlly.monster.baseData.monsterName}に魔法バリアを付与");
+            context.NotifyBuff(frontAlly);
         }
     }
 }

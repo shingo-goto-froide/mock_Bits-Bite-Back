@@ -17,6 +17,7 @@ public class GraveKeeperAbility : AbilityBase
                 int reviveHp = ally.monster.maxHp / 2;
                 ally.Revive(reviveHp);
                 context.AddLog($"{ally.monster.baseData.monsterName}がHP{reviveHp}で復活！");
+                context.NotifyBuff(ally);
                 revived++;
             }
         }

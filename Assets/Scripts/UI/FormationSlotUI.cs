@@ -51,19 +51,26 @@ public class FormationSlotUI : MonoBehaviour
             var imgRt = imgGo.AddComponent<RectTransform>();
             imgRt.anchorMin = new Vector2(0, 0.5f);
             imgRt.anchorMax = new Vector2(0, 0.5f);
-            imgRt.pivot = new Vector2(0, 0.5f);
-            imgRt.anchoredPosition = new Vector2(ImgMargin, 0);
+            imgRt.pivot = new Vector2(0.5f, 0.5f);
+            imgRt.anchoredPosition = new Vector2(ImgMargin + ImgSize * 0.5f, 0);
             imgRt.sizeDelta = new Vector2(ImgSize, ImgSize);
-            imgGo.AddComponent<Image>().color = new Color(0.22f, 0.22f, 0.32f);
-            var label = new GameObject("Label");
-            label.transform.SetParent(imgGo.transform, false);
-            var lrt = label.AddComponent<RectTransform>();
-            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
-            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
-            var ltmp = label.AddComponent<TextMeshProUGUI>();
-            ltmp.text = "Image"; ltmp.fontSize = 12;
-            ltmp.color = new Color(0.45f, 0.45f, 0.55f);
-            ltmp.alignment = TextAlignmentOptions.Center;
+            imgGo.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.22f);
+            var sprite = MonsterSpriteLoader.GetSprite(monster.baseData.monsterType);
+            if (sprite != null)
+            {
+                var spriteGo = new GameObject("Sprite");
+                spriteGo.transform.SetParent(imgGo.transform, false);
+                var srt = spriteGo.AddComponent<RectTransform>();
+                srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one;
+                srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
+                var sImg = spriteGo.AddComponent<Image>();
+                sImg.sprite = sprite;
+                sImg.preserveAspect = true;
+                sImg.color = Color.white;
+                sImg.raycastTarget = false;
+                if (MonsterSpriteLoader.IsLeftFacing(monster.baseData.monsterType))
+                    spriteGo.transform.localScale = new Vector3(-1, 1, 1);
+            }
 
             // テキスト（右側）
             var info = new GameObject("Info");

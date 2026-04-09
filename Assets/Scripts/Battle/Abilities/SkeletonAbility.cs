@@ -14,6 +14,7 @@ public class SkeletonAbility : AbilityBase
             {
                 ally.monster.currentAttack += 1;
                 context.AddLog($"{owner.monster.baseData.monsterName}が{ally.monster.baseData.monsterName}の攻撃力を+1した");
+                context.NotifyBuff(ally);
                 break;
             }
         }

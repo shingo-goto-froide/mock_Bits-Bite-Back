@@ -15,6 +15,7 @@ MonoBehaviour:
   maxFormationSlots: 5
   totalWaveCount: 7
   poisonDamage: 3
+  poisonChance: 0.3
   stunChance: 0.3
   magicBarrierReduction: 0.5
   guardianMagicMultiplier: 1.5

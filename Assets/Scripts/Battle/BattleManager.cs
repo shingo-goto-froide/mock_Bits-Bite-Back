@@ -25,6 +25,11 @@ public class BattleManager : MonoBehaviour
     public event Action<BattleUnit> OnUnitDeathEvent;
     public event Action<BattleResult> OnBattleEndEvent;
     public event Action<string> OnLogEvent;
+    public event Action<BattleUnit> OnBeforeUnitAction;
+    public event Action<BattleUnit> OnAfterUnitAction;
+    public event Action<BattleUnit, BattleUnit, int, bool> OnDamageDealtEvent;
+    public event Action<BattleUnit, string> OnUnitEffectEvent;
+    public event Action<BattleUnit, bool> OnBuffDebuffEvent; // unit, isBuff(true=buff, false=debuff)
 
     public void Init(GameBalanceSO balanceSO)
     {
@@ -47,20 +52,43 @@ public class BattleManager : MonoBehaviour
 
         // 敵ユニット生成
         int enemyIndex = 0;
-        foreach (var entry in wave.enemies)
+        if (wave.useRandomFormation)
         {
-            var enemyMonster = new MonsterInstance(entry.monsterData);
-            // レベル補正
-            if (entry.level > 1)
+            // ランダム編成
+            var pool = (wave.randomPool != null && wave.randomPool.Length > 0) ? wave.randomPool : allMonsterData;
+            for (int i = 0; i < wave.randomEnemyCount; i++)
             {
-                float multiplier = 1f + (entry.level - 1) * 0.5f;
-                enemyMonster.maxHp = Mathf.RoundToInt(enemyMonster.maxHp * multiplier);
-                enemyMonster.currentHp = enemyMonster.maxHp;
-                enemyMonster.currentAttack = Mathf.RoundToInt(enemyMonster.currentAttack * multiplier);
+                var data = pool[UnityEngine.Random.Range(0, pool.Length)];
+                var enemyMonster = new MonsterInstance(data);
+                if (wave.randomLevel > 1)
+                {
+                    float multiplier = 1f + (wave.randomLevel - 1) * 0.5f;
+                    enemyMonster.maxHp = Mathf.RoundToInt(enemyMonster.maxHp * multiplier);
+                    enemyMonster.currentHp = enemyMonster.maxHp;
+                    enemyMonster.currentAttack = Mathf.RoundToInt(enemyMonster.currentAttack * multiplier);
+                }
+                var unit = CreateBattleUnit(enemyMonster, enemyIndex, false);
+                enemyUnits.Add(unit);
+                enemyIndex += data.slotSize;
             }
-            var unit = CreateBattleUnit(enemyMonster, enemyIndex, false);
-            enemyUnits.Add(unit);
-            enemyIndex += entry.monsterData.slotSize;
+        }
+        else
+        {
+            // 固定編成
+            foreach (var entry in wave.enemies)
+            {
+                var enemyMonster = new MonsterInstance(entry.monsterData);
+                if (entry.level > 1)
+                {
+                    float multiplier = 1f + (entry.level - 1) * 0.5f;
+                    enemyMonster.maxHp = Mathf.RoundToInt(enemyMonster.maxHp * multiplier);
+                    enemyMonster.currentHp = enemyMonster.maxHp;
+                    enemyMonster.currentAttack = Mathf.RoundToInt(enemyMonster.currentAttack * multiplier);
+                }
+                var unit = CreateBattleUnit(enemyMonster, enemyIndex, false);
+                enemyUnits.Add(unit);
+                enemyIndex += entry.monsterData.slotSize;
+            }
         }
     }
 
@@ -113,13 +141,20 @@ public class BattleManager : MonoBehaviour
                 if (!unit.isAlive) continue;
                 if (!isAutoPlaying) yield break;
 
+                // ▼ アクション開始: アクターをハイライト
+                OnBeforeUnitAction?.Invoke(unit);
+                yield return new WaitForSeconds(turnSpeed * 0.8f);
+
                 // ピヨリチェック
                 if (unit.HasStatusEffect(StatusEffectType.Stun))
                 {
                     if (UnityEngine.Random.value < balance.stunChance)
                     {
                         AddLog($"{unit.monster.baseData.monsterName}はピヨリで動けない！");
-                        yield return new WaitForSeconds(turnSpeed * 0.5f);
+                        NotifyDebuff(unit);
+                        OnUnitEffectEvent?.Invoke(unit, "ピヨリ！");
+                        OnAfterUnitAction?.Invoke(unit);
+                        yield return new WaitForSeconds(turnSpeed * 0.8f);
                         continue;
                     }
                 }
@@ -142,21 +177,23 @@ public class BattleManager : MonoBehaviour
                         if (CheckAndEndBattle()) yield break;
                     }
                     shapeShifter?.RevertStats();
-                    yield return new WaitForSeconds(turnSpeed * 0.5f);
+                    OnAfterUnitAction?.Invoke(unit);
+                    yield return new WaitForSeconds(turnSpeed * 0.8f);
                     continue;
                 }
 
                 // 通常攻撃
                 if (unit.monster.currentRange > 0 || unit.monster.baseData.monsterType == MonsterType.ShadowWalker)
                 {
-                    ExecuteAttack(unit);
+                    yield return StartCoroutine(ExecuteAttackCoroutine(unit));
                     if (CheckAndEndBattle()) yield break;
 
                     // アーチャー2連射
-                    if (unit.ability is ArcherAbility archer && archer.ShouldDoubleAttack(this))
+                    if (unit.isAlive && unit.ability is ArcherAbility archer && archer.ShouldDoubleAttack(this))
                     {
                         AddLog($"{unit.monster.baseData.monsterName}の2連射！");
-                        ExecuteAttack(unit);
+                        yield return new WaitForSeconds(turnSpeed * 0.3f);
+                        yield return StartCoroutine(ExecuteAttackCoroutine(unit));
                         if (CheckAndEndBattle()) yield break;
                     }
                 }
@@ -164,17 +201,24 @@ public class BattleManager : MonoBehaviour
                 // シェイプシフター: 行動後にステータスを戻す
                 shapeShifter?.RevertStats();
 
-                yield return new WaitForSeconds(turnSpeed * 0.5f);
+                // ▼ アクション終了: ハイライト解除
+                OnAfterUnitAction?.Invoke(unit);
+                yield return new WaitForSeconds(turnSpeed * 0.6f);
             }
 
             yield return new WaitForSeconds(turnSpeed * 0.3f);
         }
     }
 
-    private void ExecuteAttack(BattleUnit attacker)
+    private IEnumerator ExecuteAttackCoroutine(BattleUnit attacker)
     {
         var targets = FindTarget(attacker);
-        if (targets.Count == 0) return;
+        if (targets.Count == 0)
+        {
+            AddLog($"{attacker.monster.baseData.monsterName}は射程外で攻撃できない！");
+            OnUnitEffectEvent?.Invoke(attacker, "射程外");
+            yield break;
+        }
 
         var action = new BattleAction { actor = attacker };
 
@@ -184,11 +228,16 @@ public class BattleManager : MonoBehaviour
             action.targets.Add(target);
             action.damage += damage;
 
-            // 毒攻撃付与チェック
+            OnDamageDealtEvent?.Invoke(attacker, target, damage, !target.isAlive);
+
+            // 毒攻撃付与チェック（確率判定）
             if (attacker.hasPoisonAttack && !target.HasStatusEffect(StatusEffectType.Poison))
             {
-                target.AddStatusEffect(new StatusEffect(StatusEffectType.Poison, -1));
-                AddLog($"{target.monster.baseData.monsterName}は毒を受けた！");
+                if (UnityEngine.Random.value < balance.poisonChance)
+                {
+                    target.AddStatusEffect(new StatusEffect(StatusEffectType.Poison, -1));
+                    AddLog($"{target.monster.baseData.monsterName}は毒を受けた！");
+                }
             }
 
             // オーク: ピヨリ付与
@@ -206,6 +255,8 @@ public class BattleManager : MonoBehaviour
             {
                 ProcessDeath(target);
             }
+
+            yield return new WaitForSeconds(turnSpeed * 0.4f);
         }
 
         OnUnitActionEvent?.Invoke(action);
@@ -219,11 +270,10 @@ public class BattleManager : MonoBehaviour
 
         if (livingEnemies.Count == 0) return targets;
 
-        // ガーディアンチェック: 生存しているガーディアンがいれば全攻撃をリダイレクト
-        BattleUnit guardian = livingEnemies.Find(u =>
-            u.monster.baseData.monsterType == MonsterType.Guardian && u.isAlive);
+        int attackerLivePos = GetLivePosition(attacker);
+        int range = attacker.monster.currentRange;
 
-        // シャドウウォーカー: ランダムターゲット
+        // シャドウウォーカー: ランダムターゲット（射程無視）
         if (attacker.monster.baseData.monsterType == MonsterType.ShadowWalker)
         {
             int randomIndex = UnityEngine.Random.Range(0, livingEnemies.Count);
@@ -232,15 +282,30 @@ public class BattleManager : MonoBehaviour
             return targets;
         }
 
+        // ガーディアンチェック: 生存しているガーディアンがいれば全攻撃をリダイレクト
+        BattleUnit guardian = livingEnemies.Find(u =>
+            u.monster.baseData.monsterType == MonsterType.Guardian && u.isAlive);
+
         if (guardian != null)
         {
-            // 貫通攻撃: ガーディアンを含む射程内の全敵
+            // 射程内に敵がいるか判定
+            bool canReachAny = false;
+            foreach (var enemy in livingEnemies)
+            {
+                if (attackerLivePos + GetLivePosition(enemy) < range)
+                {
+                    canReachAny = true;
+                    break;
+                }
+            }
+            if (!canReachAny) return targets; // 射程外→スキップ
+
             if (attacker.monster.baseData.isPenetrate)
             {
-                targets.Add(guardian);
+                // 貫通攻撃: 射程内の全敵（ガーディアン含む）
                 foreach (var enemy in livingEnemies)
                 {
-                    if (enemy != guardian && enemy.formationIndex < attacker.monster.currentRange)
+                    if (attackerLivePos + GetLivePosition(enemy) < range)
                         targets.Add(enemy);
                 }
             }
@@ -252,49 +317,56 @@ public class BattleManager : MonoBehaviour
         }
 
         // 通常ターゲット: 射程内で一番遠い敵
-        int range = attacker.monster.currentRange;
         BattleUnit farthest = null;
+        int farthestLivePos = -1;
 
         foreach (var enemy in livingEnemies)
         {
-            if (enemy.formationIndex < range)
+            int targetLivePos = GetLivePosition(enemy);
+            if (attackerLivePos + targetLivePos < range)
             {
-                if (farthest == null || enemy.formationIndex > farthest.formationIndex)
+                if (farthest == null || targetLivePos > farthestLivePos)
+                {
                     farthest = enemy;
+                    farthestLivePos = targetLivePos;
+                }
             }
         }
 
-        // 射程内に敵がいない場合は一番近い敵を攻撃
-        if (farthest == null && livingEnemies.Count > 0)
+        // 射程内に敵がいなければ空リストを返す（攻撃スキップ）
+        if (farthest == null) return targets;
+
+        if (attacker.monster.baseData.isPenetrate)
         {
-            farthest = livingEnemies[0];
+            // 貫通: 射程内の全敵
             foreach (var enemy in livingEnemies)
             {
-                if (enemy.formationIndex < farthest.formationIndex)
-                    farthest = enemy;
+                if (attackerLivePos + GetLivePosition(enemy) < range)
+                    targets.Add(enemy);
             }
         }
-
-        if (farthest != null)
+        else
         {
-            if (attacker.monster.baseData.isPenetrate)
-            {
-                // 貫通: 射程内の全敵
-                foreach (var enemy in livingEnemies)
-                {
-                    if (enemy.formationIndex < range)
-                        targets.Add(enemy);
-                }
-                if (targets.Count == 0)
-                    targets.Add(farthest);
-            }
-            else
-            {
-                targets.Add(farthest);
-            }
+            targets.Add(farthest);
         }
 
         return targets;
+    }
+
+    /// <summary>
+    /// ユニットの生存位置を返す（前方の生存味方数 = 実効的な隊列位置）
+    /// 前方の味方が倒れると自動的に前進する
+    /// </summary>
+    private int GetLivePosition(BattleUnit unit)
+    {
+        var sameTeam = unit.isPlayerSide ? playerUnits : enemyUnits;
+        int pos = 0;
+        foreach (var ally in sameTeam)
+        {
+            if (ally == unit) break;
+            if (ally.isAlive) pos++;
+        }
+        return pos;
     }
 
     public int ApplyDamage(BattleUnit attacker, BattleUnit target)
@@ -369,6 +441,7 @@ public class BattleManager : MonoBehaviour
             int poisonDmg = unit.ProcessTurnStartEffects(balance);
             if (poisonDmg > 0)
             {
+                NotifyDebuff(unit);
                 AddLog($"{unit.monster.baseData.monsterName}は毒で{poisonDmg}ダメージ" +
                        (!unit.isAlive ? "（毒で倒れた！）" : ""));
                 if (!unit.isAlive)
@@ -480,6 +553,16 @@ public class BattleManager : MonoBehaviour
         }
         playerUnits.Clear();
         enemyUnits.Clear();
+    }
+
+    public void NotifyBuff(BattleUnit unit)
+    {
+        OnBuffDebuffEvent?.Invoke(unit, true);
+    }
+
+    public void NotifyDebuff(BattleUnit unit)
+    {
+        OnBuffDebuffEvent?.Invoke(unit, false);
     }
 
     public void SetTurnSpeed(float speed)

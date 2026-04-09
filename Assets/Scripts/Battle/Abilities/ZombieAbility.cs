@@ -16,6 +16,7 @@ public class ZombieAbility : AbilityBase
             {
                 ally.hasPoisonAttack = true;
                 context.AddLog($"{ally.monster.baseData.monsterName}に毒攻撃を付与");
+                context.NotifyBuff(ally);
             }
         }
         // ゾンビ自身も毒攻撃を持つ

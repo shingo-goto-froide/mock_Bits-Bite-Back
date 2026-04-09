@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -26,7 +27,9 @@ public class BattleUI : MonoBehaviour
     private BattleManager battleManager;
     private List<BattleUnitView> playerViews = new List<BattleUnitView>();
     private List<BattleUnitView> enemyViews = new List<BattleUnitView>();
+    private Dictionary<BattleUnit, BattleUnitView> unitViewMap = new Dictionary<BattleUnit, BattleUnitView>();
     private float[] speedOptions = { 1f, 0.5f, 0.2f };
+    private string[] speedLabels = { "1x", "2x", "5x" };
     private int currentSpeedIndex;
     private string fullLog = "";
 
@@ -47,6 +50,12 @@ public class BattleUI : MonoBehaviour
 
         playerFormationParent = FindDeep(transform, "PlayerContent");
         enemyFormationParent = FindDeep(transform, "EnemyContent");
+
+        // 味方は左詰め、敵は右詰め
+        var playerLayout = playerFormationParent?.GetComponent<HorizontalLayoutGroup>();
+        if (playerLayout != null) playerLayout.childAlignment = TextAnchor.MiddleLeft;
+        var enemyLayout = enemyFormationParent?.GetComponent<HorizontalLayoutGroup>();
+        if (enemyLayout != null) enemyLayout.childAlignment = TextAnchor.MiddleRight;
 
         var logScroll = FindDeep(transform, "LogScrollView");
         if (logScroll != null) logScrollRect = logScroll.GetComponent<ScrollRect>();
@@ -81,6 +90,11 @@ public class BattleUI : MonoBehaviour
         battleManager.OnUnitDeathEvent += OnUnitDeath;
         battleManager.OnBattleEndEvent += OnBattleEnd;
         battleManager.OnLogEvent += OnLog;
+        battleManager.OnBeforeUnitAction += OnBeforeAction;
+        battleManager.OnAfterUnitAction += OnAfterAction;
+        battleManager.OnDamageDealtEvent += OnDamageDealt;
+        battleManager.OnUnitEffectEvent += OnUnitEffect;
+        battleManager.OnBuffDebuffEvent += OnBuffDebuff;
 
         if (speedButton != null) speedButton.onClick.AddListener(OnSpeedClicked);
         if (continueButton != null) continueButton.onClick.AddListener(OnContinueClicked);
@@ -127,6 +141,11 @@ public class BattleUI : MonoBehaviour
             battleManager.OnUnitDeathEvent -= OnUnitDeath;
             battleManager.OnBattleEndEvent -= OnBattleEnd;
             battleManager.OnLogEvent -= OnLog;
+            battleManager.OnBeforeUnitAction -= OnBeforeAction;
+            battleManager.OnAfterUnitAction -= OnAfterAction;
+            battleManager.OnDamageDealtEvent -= OnDamageDealt;
+            battleManager.OnUnitEffectEvent -= OnUnitEffect;
+            battleManager.OnBuffDebuffEvent -= OnBuffDebuff;
         }
     }
 
@@ -144,6 +163,7 @@ public class BattleUI : MonoBehaviour
             var view = go.GetComponent<BattleUnitView>();
             view.Bind(unit);
             playerViews.Add(view);
+            unitViewMap[unit] = view;
         }
 
         // 敵は逆順に配置（前衛が右端=味方側に来る）
@@ -154,13 +174,25 @@ public class BattleUI : MonoBehaviour
             var view = go.GetComponent<BattleUnitView>();
             view.Bind(unit);
             enemyViews.Add(view);
+            unitViewMap[unit] = view;
         }
     }
 
     private void Update()
     {
-        foreach (var view in playerViews) view.Refresh();
-        foreach (var view in enemyViews) view.Refresh();
+        foreach (var view in playerViews)
+        {
+            // 復活したユニットを再表示
+            if (!view.gameObject.activeSelf && view.Unit != null && view.Unit.isAlive)
+                view.gameObject.SetActive(true);
+            if (view.gameObject.activeSelf) view.Refresh();
+        }
+        foreach (var view in enemyViews)
+        {
+            if (!view.gameObject.activeSelf && view.Unit != null && view.Unit.isAlive)
+                view.gameObject.SetActive(true);
+            if (view.gameObject.activeSelf) view.Refresh();
+        }
     }
 
     private void OnTurnStart(int turn)
@@ -169,7 +201,154 @@ public class BattleUI : MonoBehaviour
             turnText.text = $"ターン {turn}";
     }
 
-    private void OnUnitDeath(BattleUnit unit) { }
+    private void OnBeforeAction(BattleUnit unit)
+    {
+        if (unitViewMap.TryGetValue(unit, out var view))
+            view.SetActing(true);
+    }
+
+    private void OnAfterAction(BattleUnit unit)
+    {
+        if (unitViewMap.TryGetValue(unit, out var view))
+            view.SetActing(false);
+    }
+
+    private void OnDamageDealt(BattleUnit attacker, BattleUnit target, int damage, bool killed)
+    {
+        if (unitViewMap.TryGetValue(attacker, out var fromView) &&
+            unitViewMap.TryGetValue(target, out var toView))
+        {
+            StartCoroutine(ProjectileAndDamage(fromView, toView, damage, killed, attacker.isPlayerSide));
+        }
+        else if (unitViewMap.TryGetValue(target, out var view))
+        {
+            view.ShowDamagePopup(damage);
+            if (killed)
+                view.ShowEffectText("撃破!", new Color(1f, 0.5f, 0f));
+        }
+    }
+
+    private IEnumerator ProjectileAndDamage(BattleUnitView from, BattleUnitView to, int damage, bool killed, bool isPlayerSide)
+    {
+        Color baseColor = isPlayerSide ? new Color(0.4f, 0.7f, 1f) : new Color(1f, 0.4f, 0.2f);
+        Color coreColor = isPlayerSide ? new Color(0.8f, 0.95f, 1f) : new Color(1f, 0.85f, 0.6f);
+
+        // 光の弾を生成
+        var projectile = new GameObject("Projectile");
+        projectile.transform.SetParent(transform, false);
+        var prt = projectile.AddComponent<RectTransform>();
+        prt.sizeDelta = new Vector2(24, 24);
+
+        // 外側のグロー
+        var glowGo = new GameObject("Glow");
+        glowGo.transform.SetParent(projectile.transform, false);
+        var glowRt = glowGo.AddComponent<RectTransform>();
+        glowRt.sizeDelta = new Vector2(40, 40);
+        var glowImg = glowGo.AddComponent<Image>();
+        glowImg.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0.4f);
+        glowImg.raycastTarget = false;
+
+        // 中心の明るいコア
+        var coreGo = new GameObject("Core");
+        coreGo.transform.SetParent(projectile.transform, false);
+        var coreRt = coreGo.AddComponent<RectTransform>();
+        coreRt.sizeDelta = new Vector2(16, 16);
+        var coreImg = coreGo.AddComponent<Image>();
+        coreImg.color = coreColor;
+        coreImg.raycastTarget = false;
+
+        Vector3 startPos = from.transform.position;
+        Vector3 endPos = to.transform.position;
+
+        // 飛行アニメーション
+        float flyDuration = 0.2f;
+        float elapsed = 0f;
+        while (elapsed < flyDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / flyDuration;
+            float eased = t * t * (3f - 2f * t); // smoothstep
+            projectile.transform.position = Vector3.Lerp(startPos, endPos, eased);
+            // 飛行中に少し脈動
+            float pulse = 1f + 0.2f * Mathf.Sin(t * Mathf.PI * 3f);
+            prt.localScale = new Vector3(pulse, pulse, 1f);
+            yield return null;
+        }
+
+        Destroy(projectile);
+
+        // 着弾エフェクト（はじける）
+        StartCoroutine(BurstEffect(endPos, baseColor));
+        StartCoroutine(BurstEffect(endPos, coreColor, 0.05f, 0.6f));
+
+        // ダメージ表示
+        to.ShowDamagePopup(damage);
+        if (killed)
+            to.ShowEffectText("撃破!", new Color(1f, 0.5f, 0f));
+    }
+
+    private IEnumerator BurstEffect(Vector3 position, Color color, float delay = 0f, float sizeMultiplier = 1f)
+    {
+        if (delay > 0f) yield return new WaitForSeconds(delay);
+
+        var burst = new GameObject("Burst");
+        burst.transform.SetParent(transform, false);
+        burst.transform.position = position;
+        var brt = burst.AddComponent<RectTransform>();
+        brt.sizeDelta = new Vector2(30, 30) * sizeMultiplier;
+        var bImg = burst.AddComponent<Image>();
+        bImg.color = new Color(color.r, color.g, color.b, 0.8f);
+        bImg.raycastTarget = false;
+
+        float duration = 0.3f;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            float scale = 1f + t * 2.5f;
+            brt.localScale = new Vector3(scale, scale, 1f);
+            bImg.color = new Color(color.r, color.g, color.b, 0.8f * (1f - t));
+            yield return null;
+        }
+
+        Destroy(burst);
+    }
+
+    private void OnUnitEffect(BattleUnit unit, string effect)
+    {
+        if (unitViewMap.TryGetValue(unit, out var view))
+        {
+            Color color = Color.white;
+            if (effect.Contains("ピヨリ")) color = new Color(1f, 1f, 0.3f);
+            else if (effect.Contains("射程外")) color = new Color(0.6f, 0.6f, 0.6f);
+            view.ShowEffectText(effect, color);
+        }
+    }
+
+    private void OnBuffDebuff(BattleUnit unit, bool isBuff)
+    {
+        if (unitViewMap.TryGetValue(unit, out var view))
+        {
+            if (isBuff)
+                view.Flash(new Color(0.2f, 0.9f, 0.3f), 0.35f); // 緑: バフ・回復
+            else
+                view.Flash(new Color(0.6f, 0.15f, 0.8f), 0.35f); // 紫: デバフ・毒
+        }
+    }
+
+    private void OnUnitDeath(BattleUnit unit)
+    {
+        if (unitViewMap.TryGetValue(unit, out var view))
+            StartCoroutine(HideAfterDelay(view, 0.5f));
+    }
+
+    private IEnumerator HideAfterDelay(BattleUnitView view, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (view != null && view.Unit != null && !view.Unit.isAlive)
+            view.gameObject.SetActive(false);
+    }
 
     private void OnBattleEnd(BattleResult result)
     {
@@ -198,7 +377,7 @@ public class BattleUI : MonoBehaviour
         currentSpeedIndex = (currentSpeedIndex + 1) % speedOptions.Length;
         battleManager.SetTurnSpeed(speedOptions[currentSpeedIndex]);
         if (speedButtonText != null)
-            speedButtonText.text = $"速度: {currentSpeedIndex + 1}x";
+            speedButtonText.text = $"速度: {speedLabels[currentSpeedIndex]}";
     }
 
     private void OnContinueClicked()

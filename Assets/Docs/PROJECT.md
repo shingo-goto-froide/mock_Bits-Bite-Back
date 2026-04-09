@@ -65,6 +65,39 @@
 
 ---
 
+## データ管理・調整ガイド
+
+### Wave編成の変更
+- Wave SOは `Assets/Resources/EnemyWaves/` に配置。起動時に自動ロードされ `waveNumber` 順にソートされる
+- Wave数の変更: SOファイルを追加・削除するだけ（コード変更不要）
+- 新規作成: `Assets > Create > BitsBiteBack > EnemyWave` → `Resources/EnemyWaves/` に配置
+- 固定編成: `Use Random Formation` OFF → `Enemies` に手動設定
+- ランダム編成: `Use Random Formation` ON → `Random Pool`（空なら全魔物）、敵数、レベルを設定
+
+### 魔物データの変更
+- 各魔物SOは `Assets/Resources/Monsters/{MonsterType}.asset`
+- HP・ATK・速度・射程・枠数・攻撃タイプ・貫通・レシピをインスペクタから編集可能
+- 新規魔物: `Assets > Create > BitsBiteBack > MonsterData`（Enumへの追加も必要）
+
+### バランス調整
+- `Assets/Resources/GameBalance.asset` で一元管理
+- 毒ダメージ、毒付与確率、ピヨリ確率、魔法バリア減衰率、僧侶回復率、分解返却率、報酬素材数、初期素材などを調整可能
+
+### デバッグ機能（PrepareScene右上）
+- `素材MAX`: 全素材を99個に
+- `全魔物入手`: 全13体を1体ずつ追加（連打で複数体）
+- `全回復`: 所持魔物のHPを全回復
+- `魔物クリア`: 所持魔物を全削除
+- `Wave▲/▼`: 任意のWaveにジャンプ
+
+### 魔物画像（スプライトシート）
+- `Assets/Resources/MonsterSpriteSheet.png` に7列×2行で配置
+- MonsterType enum順（左上から右へ）で自動分割
+- 個別の切り出しオフセットは `MonsterSpriteLoader.GetCropOffset()` で調整
+- 向き情報は `MonsterSpriteLoader.IsLeftFacing()` で管理（6番目以降が左向き）
+
+---
+
 ## 既知のバグ・TODO
 
 ### バグ（未解決）
