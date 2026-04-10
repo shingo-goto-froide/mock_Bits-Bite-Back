@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -17,10 +18,18 @@ public class GameManager : MonoBehaviour
     [SerializeField] private CraftingManager craftingManager;
     [SerializeField] private FormationManager formationManager;
 
+    [Header("ダンジョン設定")]
+    [SerializeField] private DungeonConfigSO dungeonConfig;
+
     public GamePhase CurrentPhase { get; private set; }
     public int CurrentWave { get; private set; }
     public MaterialInventory Inventory { get; private set; }
     public List<MonsterInstance> OwnedMonsters { get; private set; }
+
+    // ダンジョンバトル用の状態
+    public EnemyWaveSO DungeonBattleWave { get; private set; }
+    public bool IsDungeonBattle { get; private set; }
+    public bool IsBossBattle { get; private set; }
 
     public GameBalanceSO Balance => balance;
     public BattleManager Battle => battleManager;
@@ -28,6 +37,7 @@ public class GameManager : MonoBehaviour
     public FormationManager Formation => formationManager;
     public MonsterDataSO[] AllMonsterData => allMonsterData;
     public EnemyWaveSO[] EnemyWaves => enemyWaves;
+    public DungeonConfigSO DungeonConfig => dungeonConfig;
 
     public event Action<GamePhase> OnPhaseChanged;
     public event Action<Dictionary<MaterialType, int>> OnRewardGiven;
@@ -48,6 +58,9 @@ public class GameManager : MonoBehaviour
         OwnedMonsters = new List<MonsterInstance>();
 
         LoadReferencesIfMissing();
+
+        if (dungeonConfig == null)
+            dungeonConfig = Resources.Load<DungeonConfigSO>("DungeonConfig");
 
         // 同一GameObjectのマネージャーを取得
         if (battleManager == null) battleManager = GetComponent<BattleManager>();
@@ -108,6 +121,10 @@ public class GameManager : MonoBehaviour
         CurrentWave = 0;
         Inventory = new MaterialInventory();
         OwnedMonsters.Clear();
+        if (formationManager != null)
+            formationManager.Clear();
+        ClearDungeonBattle();
+        DungeonManager.ClearSavedState();
 
         // 初期素材を配布
         if (balance.initialMaterials != null)
@@ -206,8 +223,69 @@ public class GameManager : MonoBehaviour
 
     public void RestartGame()
     {
+        DungeonManager.ClearSavedState();
         formationManager.Clear();
         StartGame();
+    }
+
+    /// <summary>ダンジョンバトル情報をセット（DungeonManager から呼ばれる）</summary>
+    public void SetDungeonBattle(EnemyWaveSO wave, bool isBoss)
+    {
+        DungeonBattleWave = wave;
+        IsDungeonBattle = true;
+        IsBossBattle = isBoss;
+    }
+
+    /// <summary>ダンジョンバトル情報をクリア</summary>
+    public void ClearDungeonBattle()
+    {
+        DungeonBattleWave = null;
+        IsDungeonBattle = false;
+        IsBossBattle = false;
+    }
+
+    /// <summary>ダンジョンバトル終了時の処理</summary>
+    public void OnDungeonBattleEnd(BattleResult result)
+    {
+        if (result == BattleResult.Victory)
+        {
+            if (IsBossBattle)
+            {
+                OnBossDefeated();
+            }
+            else
+            {
+                // 通常バトル勝利 → ダンジョンに戻る
+                battleManager.ClearBattle();
+                ClearDungeonBattle();
+                // HP0の魔物をHP1で復帰
+                foreach (var monster in OwnedMonsters)
+                {
+                    if (monster.currentHp <= 0)
+                        monster.currentHp = 1;
+                }
+                SceneManager.LoadScene("DungeonScene");
+            }
+        }
+        else
+        {
+            // 敗北 → タイトルに戻る
+            battleManager.ClearBattle();
+            ClearDungeonBattle();
+            DungeonManager.ClearSavedState();
+            GameOver();
+            SceneManager.LoadScene("TitleScene");
+        }
+    }
+
+    /// <summary>ボス撃破時のクリア処理</summary>
+    public void OnBossDefeated()
+    {
+        Debug.Log("[GameManager] ダンジョンクリア！ボスを撃破！");
+        battleManager.ClearBattle();
+        ClearDungeonBattle();
+        DungeonManager.ClearSavedState();
+        OnGameClear?.Invoke();
     }
 
     public void AddMonster(MonsterInstance monster)

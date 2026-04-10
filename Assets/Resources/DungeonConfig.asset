@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48a375133ec54b644b99d5530be915a3, type: 3}
+  m_Name: DungeonConfig
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonConfigSO
+  mapWidth: 30
+  mapHeight: 30
+  minRooms: 5
+  maxRooms: 8
+  minRoomSize: 4
+  maxRoomSize: 8
+  enemyCount: 5
+  treasureCount: 3
+  eventCount: 2
+  healPercent: 0.3
+  enemyMoveChance: 0.5
+  bossHpMultiplier: 2
+  bossAtkMultiplier: 1.5
+  treasureMaterialMin: 1
+  treasureMaterialMax: 2
+  weakEnemyWaves: []
+  mediumEnemyWaves: []
+  strongEnemyWaves: []
+  bossWave: {fileID: 0}

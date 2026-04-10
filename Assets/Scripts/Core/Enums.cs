@@ -35,8 +35,33 @@ public enum GamePhase
 {
     Title,
     Prepare,
+    Dungeon,
     Battle,
     Reward
+}
+
+public enum DungeonTileType
+{
+    Wall,
+    Floor,
+    Corridor,
+    Entrance,
+    BossRoom
+}
+
+public enum DungeonEntityType
+{
+    Enemy,
+    Treasure,
+    Event,
+    Boss
+}
+
+public enum EnemyRank
+{
+    Weak,
+    Medium,
+    Strong
 }
 
 public enum AbilityTrigger

@@ -14,6 +14,11 @@ public class BattleManager : MonoBehaviour
     public bool isAutoPlaying;
     [SerializeField] private float turnSpeed = 1f;
 
+    /// <summary>ボス戦かどうか（ダンジョンから遷移時に設定）</summary>
+    public bool isBossBattle;
+    /// <summary>バトル後にダンジョンに戻るか（ダンジョンから遷移時に設定）</summary>
+    public bool returnToDungeon;
+
     private int allyDeathCountThisWave;
     private List<string> battleLog = new List<string>();
 

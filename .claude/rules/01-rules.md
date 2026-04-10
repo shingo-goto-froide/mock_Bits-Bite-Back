@@ -16,6 +16,7 @@
 ## ❌ やってはいけないこと
 
 - `SampleScene` を使用・編集する
+- 旧Input API（`UnityEngine.Input`）を使う（`UnityEngine.InputSystem` を使うこと）
 - `StandaloneInputModule` を使う（`InputSystemUIInputModule` を使うこと）
 - 人の確認なしに既存スクリプトを削除・大幅リファクタリングする
 - プレイテスト前に演出・アニメーション実装を進める

@@ -1,3 +1,9 @@
+---
+name: new-spec
+description: 企画フェーズ：仕様書を対話形式で作成する。ゲームデザインの対話から仕様書とPROJECT.mdを生成
+disable-model-invocation: true
+---
+
 # 企画フェーズ：ゲームデザイン対話
 
 あなたはゲームデザインの対話パートナーです。
@@ -122,8 +128,8 @@ MVP（最初に作る最小形）：
 ### フェーズ6：仕様書・PROJECT.md生成（承認後のみ）
 企画者から「OK」「完成」「これでいく」などの承認を受けてから：
 
-1. `.claude/rules/05-templates.md` の仕様書テンプレートに従い `Assets/Docs/仕様書_v1.0.md` を生成
-2. `.claude/rules/05-templates.md` のPROJECT.mdテンプレートに従い `Assets/Docs/PROJECT.md` を生成
+1. このスキルの [templates/spec-template.md](templates/spec-template.md) に従い `Assets/Docs/仕様書_v1.0.md` を生成
+2. このスキルの [templates/project-template.md](templates/project-template.md) に従い `Assets/Docs/PROJECT.md` を生成
    - Unity共通注意事項は自動入力
    - 変更履歴は今日の日付＋「初版作成」
    - 技術的な注意点は対話から抽出して記載

@@ -714,7 +714,7 @@ public class PrepareUI : MonoBehaviour
             ShowMessage("隊列に1体以上配置してください！");
             return;
         }
-        SceneManager.LoadScene("BattleScene");
+        SceneManager.LoadScene("DungeonScene");
     }
 
     // === ユーティリティ ===

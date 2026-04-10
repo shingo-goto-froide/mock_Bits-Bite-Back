@@ -1,3 +1,9 @@
+---
+name: playtest
+description: プレイテスト：面白さを対話形式で検証し、問題を分類して次の行動を提案する
+disable-model-invocation: true
+---
+
 # プレイテスト：面白さの検証
 
 以下のファイルをすべて読み込んでください：

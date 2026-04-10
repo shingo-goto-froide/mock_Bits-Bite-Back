@@ -100,14 +100,36 @@ public class BattleUI : MonoBehaviour
         if (continueButton != null) continueButton.onClick.AddListener(OnContinueClicked);
         if (rewardContinueButton != null) rewardContinueButton.onClick.AddListener(OnRewardContinueClicked);
 
-        if (waveText != null)
-            waveText.text = $"Wave {gm.CurrentWave + 1}";
-
         // バトル開始
+        Debug.Log("[BattleUI] バトルセットアップ開始");
         var formation = gm.Formation.GetFormation();
-        battleManager.SetupBattle(formation, gm.EnemyWaves[gm.CurrentWave], gm.AllMonsterData);
+        Debug.Log($"[BattleUI] 隊列: {formation.Count}体, IsDungeonBattle={gm.IsDungeonBattle}");
+
+        if (gm.IsDungeonBattle && gm.DungeonBattleWave != null)
+        {
+            Debug.Log($"[BattleUI] ダンジョンバトル: Wave={gm.DungeonBattleWave.name}, Boss={gm.IsBossBattle}");
+            battleManager.isBossBattle = gm.IsBossBattle;
+            battleManager.returnToDungeon = !gm.IsBossBattle;
+            battleManager.SetupBattle(formation, gm.DungeonBattleWave, gm.AllMonsterData);
+            if (waveText != null)
+                waveText.text = gm.IsBossBattle ? "BOSS" : "ダンジョンバトル";
+        }
+        else
+        {
+            Debug.Log($"[BattleUI] 通常バトル: CurrentWave={gm.CurrentWave}");
+            if (gm.CurrentWave < gm.EnemyWaves.Length)
+                battleManager.SetupBattle(formation, gm.EnemyWaves[gm.CurrentWave], gm.AllMonsterData);
+            battleManager.isBossBattle = false;
+            battleManager.returnToDungeon = false;
+            if (waveText != null)
+                waveText.text = $"Wave {gm.CurrentWave + 1}";
+        }
+
+        Debug.Log($"[BattleUI] SetupBattle完了: 味方{battleManager.playerUnits.Count}, 敵{battleManager.enemyUnits.Count}");
         SetupViews();
+        Debug.Log("[BattleUI] SetupViews完了, StartBattle呼び出し");
         battleManager.StartBattle();
+        Debug.Log("[BattleUI] StartBattle完了（コルーチン開始）");
     }
 
     private TMP_Text FindText(string name)
@@ -356,7 +378,34 @@ public class BattleUI : MonoBehaviour
         {
             resultPanel.SetActive(true);
             if (resultText != null)
-                resultText.text = result == BattleResult.Victory ? "勝利！" : "全滅…";
+            {
+                if (result == BattleResult.Victory)
+                {
+                    var gm = GameManager.Instance;
+                    if (gm != null && gm.IsDungeonBattle && gm.IsBossBattle)
+                        resultText.text = "ボス撃破！ダンジョンクリア！";
+                    else
+                        resultText.text = "勝利！";
+                }
+                else
+                {
+                    resultText.text = "全滅…";
+                }
+            }
+
+            // ダンジョンバトルの場合、Continueボタンのテキストを変更
+            if (continueButton != null)
+            {
+                var gm = GameManager.Instance;
+                var btnText = continueButton.GetComponentInChildren<TMP_Text>();
+                if (btnText != null && gm != null && gm.IsDungeonBattle)
+                {
+                    if (result == BattleResult.Victory)
+                        btnText.text = gm.IsBossBattle ? "タイトルへ" : "続ける";
+                    else
+                        btnText.text = "タイトルへ";
+                }
+            }
         }
     }
 
@@ -385,6 +434,14 @@ public class BattleUI : MonoBehaviour
         var gm = GameManager.Instance;
         var lastResult = battleManager.CheckBattleEnd();
 
+        if (gm.IsDungeonBattle)
+        {
+            // ダンジョンバトルの終了処理
+            gm.OnDungeonBattleEnd(lastResult ?? BattleResult.Defeat);
+            return;
+        }
+
+        // 通常Wave戦（v1.0互換）
         if (lastResult == BattleResult.Victory)
         {
             gm.AdvanceWave();
