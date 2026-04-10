@@ -27,7 +27,7 @@
 | フェーズ | ツール | 種別 | 備考 |
 |---|---|---|---|
 | 企画 | `/new-spec` | skill | 対話形式で仕様書を作成 |
-| 設計 | `/gen-design` | skill | ゲームデザイン + UI設計 + 技術設計 |
+| 設計 | `/gen-design` | skill | ゲームデザイン + UI設計 + 技術設計 + デバッグ機能設計 |
 | コアループ実装 | gen-scripts → gen-scene | agent | シーン構築はUnityMCP必須 |
 | プレイテスト | `/playtest` | skill | 面白さの検証。面白くなければ設計へ戻る |
 | 残り実装 | gen-scripts → gen-scene | agent | 面白さが確認できてから |

@@ -778,16 +778,26 @@ public class PrepareUI : MonoBehaviour
             }
 
             var d = monster.baseData;
+            var rankLabel = monster.GetRankLabel();
+            var rankColor = monster.GetRankColor();
+            var eff = monster.GetEffectiveStats();
             var go = CreateDisassembleRow(disassembleListContent,
-                d.monsterType, d.monsterName,
-                $"HP:{d.baseHp}  ATK:{d.baseAttack}  SPD:{d.speed}  射程:{d.range}  枠:{d.slotSize}",
+                d.monsterType,
+                $"{d.monsterName} <color=#{ColorUtility.ToHtmlStringRGB(rankColor)}>[{rankLabel}]</color>",
+                $"HP:{eff.hp}  ATK:{eff.atk}  SPD:{eff.spd}  射程:{eff.range}  枠:{d.slotSize}  {monster.age}年",
                 d.abilityDescription,
                 resultStr.TrimEnd('\n'));
             var capturedMonster = monster;
             go.GetComponent<Button>()?.onClick.AddListener(() => OnDisassembleSelected(capturedMonster));
         }
 
-        if (disassembleListContent.childCount == 0)
+        if (gm.OwnedMonsters.Count <= 1)
+        {
+            foreach (Transform child in disassembleListContent)
+                Destroy(child.gameObject);
+            CreateEmptyRow(disassembleListContent, "魔物が1体のみのため分解できません");
+        }
+        else if (disassembleListContent.childCount == 0)
             CreateEmptyRow(disassembleListContent, "分解できる魔物がありません");
     }
 
@@ -1146,23 +1156,23 @@ public class PrepareUI : MonoBehaviour
     private void ShowCraftResultDialog(MonsterInstance monster, bool usedCatalyst)
     {
         var canvas = FindDeep(transform.root, "PrepareCanvas") ?? transform;
-        var overlay = new GameObject("CraftResultOverlay");
-        overlay.transform.SetParent(canvas, false);
-        var oRt = overlay.AddComponent<RectTransform>();
+        var craftResultOverlay = new GameObject("CraftResultOverlay");
+        craftResultOverlay.transform.SetParent(canvas, false);
+        var oRt = craftResultOverlay.AddComponent<RectTransform>();
         oRt.anchorMin = Vector2.zero; oRt.anchorMax = Vector2.one;
         oRt.offsetMin = Vector2.zero; oRt.offsetMax = Vector2.zero;
-        overlay.AddComponent<Image>().color = new Color(0, 0, 0, 0.6f);
+        craftResultOverlay.AddComponent<Image>().color = new Color(0, 0, 0, 0.6f);
 
         var panel = new GameObject("Panel");
-        panel.transform.SetParent(overlay.transform, false);
+        panel.transform.SetParent(craftResultOverlay.transform, false);
         var pRt = panel.AddComponent<RectTransform>();
-        pRt.anchorMin = new Vector2(0.1f, 0.15f);
-        pRt.anchorMax = new Vector2(0.9f, 0.85f);
+        pRt.anchorMin = new Vector2(0.18f, 0.18f);
+        pRt.anchorMax = new Vector2(0.82f, 0.82f);
         pRt.offsetMin = Vector2.zero; pRt.offsetMax = Vector2.zero;
         panel.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.2f, 0.95f);
 
         var vlg = panel.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 5; vlg.padding = new RectOffset(25, 25, 15, 10);
+        vlg.spacing = 5; vlg.padding = new RectOffset(25, 25, 15, 65);
         vlg.childControlWidth = true; vlg.childControlHeight = true;
         vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
         vlg.childAlignment = TextAnchor.UpperCenter;
@@ -1183,21 +1193,21 @@ public class PrepareUI : MonoBehaviour
         row.transform.SetParent(panel.transform, false);
         row.AddComponent<RectTransform>();
         var rowLe = row.AddComponent<LayoutElement>();
-        rowLe.preferredHeight = 250;
-        rowLe.minHeight = 250;
+        rowLe.preferredHeight = 160;
+        rowLe.minHeight = 160;
         var rowHlg = row.AddComponent<HorizontalLayoutGroup>();
-        rowHlg.spacing = 25;
-        rowHlg.padding = new RectOffset(30, 30, 10, 10);
+        rowHlg.spacing = 20;
+        rowHlg.padding = new RectOffset(20, 20, 10, 10);
         rowHlg.childControlWidth = true; rowHlg.childControlHeight = true;
         rowHlg.childForceExpandWidth = true; rowHlg.childForceExpandHeight = true;
         rowHlg.childAlignment = TextAnchor.MiddleCenter;
 
-        // 左: 魔物画像（大きめ正方形）
+        // 左: 魔物画像
         var imgContainer = new GameObject("ImageContainer");
         imgContainer.transform.SetParent(row.transform, false);
         imgContainer.AddComponent<RectTransform>();
         var imgLe = imgContainer.AddComponent<LayoutElement>();
-        imgLe.preferredWidth = 200;
+        imgLe.preferredWidth = 110;
         imgLe.flexibleWidth = 0;
         imgContainer.AddComponent<Image>().color = new Color(0.1f, 0.12f, 0.18f);
 
@@ -1286,19 +1296,22 @@ public class PrepareUI : MonoBehaviour
             catTmp.alignment = TextAlignmentOptions.Left;
         }
 
-        // OKボタン（横長、中央配置）
-        var okBtn = CreateSimpleButton(panel.transform, "OK", new Color(0.3f, 0.45f, 0.6f), () => {
-            Destroy(overlay);
+        // OKボタン（overlay上にパネル下部基準で配置）
+        var okGo = new GameObject("OKBtn");
+        okGo.transform.SetParent(craftResultOverlay.transform, false);
+        var okRt = okGo.AddComponent<RectTransform>();
+        okRt.anchorMin = new Vector2(0.5f, 0.18f); okRt.anchorMax = new Vector2(0.5f, 0.18f);
+        okRt.pivot = new Vector2(0.5f, 0);
+        okRt.anchoredPosition = new Vector2(0, 15);
+        okRt.sizeDelta = new Vector2(180, 45);
+        okGo.AddComponent<Image>().color = new Color(0.3f, 0.45f, 0.6f);
+        okGo.AddComponent<Button>().onClick.AddListener(() => {
+            Destroy(craftResultOverlay);
             RefreshHeader();
             RefreshCraftList();
             RefreshMonsterList();
         });
-        var okLe = okBtn.GetComponent<LayoutElement>();
-        if (okLe != null)
-        {
-            okLe.preferredHeight = 40;
-            okLe.minHeight = 40;
-        }
+        AddAnchorBtnText(okGo.transform, "OK");
     }
 
     private GameObject craftOverlay;
@@ -1318,8 +1331,8 @@ public class PrepareUI : MonoBehaviour
         var panel = new GameObject("Panel");
         panel.transform.SetParent(craftOverlay.transform, false);
         var pRt = panel.AddComponent<RectTransform>();
-        pRt.anchorMin = new Vector2(0.15f, 0.2f);
-        pRt.anchorMax = new Vector2(0.85f, 0.8f);
+        pRt.anchorMin = new Vector2(0.22f, 0.2f);
+        pRt.anchorMax = new Vector2(0.78f, 0.8f);
         pRt.offsetMin = Vector2.zero; pRt.offsetMax = Vector2.zero;
         panel.AddComponent<Image>().color = new Color(0.15f, 0.17f, 0.25f, 0.95f);
 
@@ -1534,6 +1547,9 @@ public class PrepareUI : MonoBehaviour
 
         CreateSimpleButton(btnRow.transform, "分解する", new Color(0.7f, 0.3f, 0.3f), () => {
             Destroy(overlay);
+            // 装備中の魂を解放
+            if (monster.HasSoulEquipped())
+                monster.UnequipSoul();
             var resultMats = gm.Crafting.GetDisassemblyResult(monster);
             gm.Crafting.Disassemble(monster, gm.Inventory);
             gm.RemoveMonster(monster);
