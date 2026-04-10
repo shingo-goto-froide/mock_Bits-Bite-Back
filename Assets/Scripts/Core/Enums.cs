@@ -86,3 +86,12 @@ public enum BattleResult
     Victory,
     Defeat
 }
+
+public enum MonsterRank
+{
+    D,  // ×0.8
+    C,  // ×1.0（基本値）
+    B,  // ×1.15
+    A,  // ×1.3
+    S   // ×1.5
+}

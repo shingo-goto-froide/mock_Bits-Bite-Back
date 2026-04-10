@@ -4,6 +4,10 @@ using System.Collections.Generic;
 public class MaterialInventory
 {
     private Dictionary<MaterialType, int> materials = new Dictionary<MaterialType, int>();
+    public int CatalystCount { get; private set; }
+
+    public void AddCatalyst(int amount = 1) { CatalystCount += amount; }
+    public bool UseCatalyst() { if (CatalystCount <= 0) return false; CatalystCount--; return true; }
 
     public int GetAmount(MaterialType type)
     {

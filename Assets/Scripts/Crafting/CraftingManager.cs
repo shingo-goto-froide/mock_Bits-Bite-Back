@@ -27,13 +27,18 @@ public class CraftingManager : MonoBehaviour
         return craftable;
     }
 
-    public MonsterInstance Craft(MonsterDataSO data, MaterialInventory inventory)
+    public MonsterInstance Craft(MonsterDataSO data, MaterialInventory inventory, bool useCatalyst = false)
     {
         if (!inventory.CanAfford(data.recipeMaterials))
             return null;
 
+        bool catalystUsed = useCatalyst && inventory.UseCatalyst();
         inventory.Consume(data.recipeMaterials);
-        return new MonsterInstance(data);
+
+        var rank = MonsterInstance.RollRank(catalystUsed);
+        var monster = new MonsterInstance(data, rank);
+        Debug.Log($"[Crafting] {data.monsterName} 練成！ ランク: {rank} (触媒: {catalystUsed})");
+        return monster;
     }
 
     public void Disassemble(MonsterInstance monster, MaterialInventory inventory)

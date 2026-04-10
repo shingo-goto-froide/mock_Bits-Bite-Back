@@ -20,5 +20,5 @@ public class EnemyWaveSO : ScriptableObject
 public struct EnemyEntry
 {
     public MonsterDataSO monsterData;
-    public int level;
+    [HideInInspector] public int level; // 未使用（互換性のため残す）
 }

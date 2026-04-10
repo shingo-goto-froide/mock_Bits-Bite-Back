@@ -23,6 +23,7 @@ public class GameManager : MonoBehaviour
 
     public GamePhase CurrentPhase { get; private set; }
     public int CurrentWave { get; private set; }
+    public int CurrentFloor { get; private set; }
     public MaterialInventory Inventory { get; private set; }
     public List<MonsterInstance> OwnedMonsters { get; private set; }
 
@@ -119,6 +120,7 @@ public class GameManager : MonoBehaviour
     public void StartGame()
     {
         CurrentWave = 0;
+        CurrentFloor = 1;
         Inventory = new MaterialInventory();
         OwnedMonsters.Clear();
         if (formationManager != null)
@@ -126,12 +128,10 @@ public class GameManager : MonoBehaviour
         ClearDungeonBattle();
         DungeonManager.ClearSavedState();
 
-        // 初期素材を配布
-        if (balance.initialMaterials != null)
-        {
-            foreach (var mat in balance.initialMaterials)
-                Inventory.Add(mat.type, mat.amount);
-        }
+        // 初期素材: スケルトン(骨2+動物骨1) + アーチャー(木2+骨1) が作れる量
+        Inventory.Add(MaterialType.LongBone, 3);
+        Inventory.Add(MaterialType.AnimalSkull, 1);
+        Inventory.Add(MaterialType.LongWood, 2);
 
         // チュートリアル用魔物を付与
         if (tutorialMonsterData != null)
@@ -255,7 +255,8 @@ public class GameManager : MonoBehaviour
             }
             else
             {
-                // 通常バトル勝利 → ダンジョンに戻る
+                // 通常バトル勝利 → 素材報酬 → ダンジョンに戻る
+                GiveDungeonBattleReward();
                 battleManager.ClearBattle();
                 ClearDungeonBattle();
                 // HP0の魔物をHP1で復帰
@@ -278,14 +279,75 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    /// <summary>ボス撃破時のクリア処理</summary>
+    /// <summary>ボス撃破 → 次の階層へ（報酬選択後に呼ばれる）</summary>
     public void OnBossDefeated()
     {
-        Debug.Log("[GameManager] ダンジョンクリア！ボスを撃破！");
+        Debug.Log($"[GameManager] 階層{CurrentFloor}クリア！次の階層へ");
         battleManager.ClearBattle();
         ClearDungeonBattle();
         DungeonManager.ClearSavedState();
-        OnGameClear?.Invoke();
+        CurrentFloor++;
+
+        // HP0の魔物をHP1で復帰
+        foreach (var monster in OwnedMonsters)
+        {
+            if (monster.currentHp <= 0)
+                monster.currentHp = 1;
+        }
+
+        SceneManager.LoadScene("PrepareScene");
+    }
+
+    /// <summary>報酬選択: 全回復</summary>
+    public void ClaimRewardHeal()
+    {
+        foreach (var monster in OwnedMonsters)
+            monster.currentHp = monster.maxHp;
+        Debug.Log("[GameManager] 報酬: 全回復");
+    }
+
+    /// <summary>報酬選択: 素材</summary>
+    public void ClaimRewardMaterials()
+    {
+        int count = 3 + CurrentFloor;
+        var types = (MaterialType[])System.Enum.GetValues(typeof(MaterialType));
+        for (int i = 0; i < count; i++)
+            Inventory.Add(types[UnityEngine.Random.Range(0, types.Length)], 1);
+        Debug.Log($"[GameManager] 報酬: 素材{count}個");
+    }
+
+    /// <summary>報酬選択: 全回復+素材少し</summary>
+    public void ClaimRewardBalanced()
+    {
+        // HP50%回復
+        foreach (var monster in OwnedMonsters)
+        {
+            int heal = monster.maxHp / 2;
+            monster.Heal(heal);
+        }
+        // 素材少し
+        int count = 1 + CurrentFloor / 2;
+        var types = (MaterialType[])System.Enum.GetValues(typeof(MaterialType));
+        for (int i = 0; i < count; i++)
+            Inventory.Add(types[UnityEngine.Random.Range(0, types.Length)], 1);
+        Debug.Log($"[GameManager] 報酬: HP50%回復 + 素材{count}個");
+    }
+
+
+    /// <summary>ダンジョンバトル勝利時の素材報酬</summary>
+    private void GiveDungeonBattleReward()
+    {
+        // 階層に応じて報酬量が増える: 2 + floor/2（端数切捨て）
+        int count = 2 + CurrentFloor / 2;
+        var materialTypes = (MaterialType[])System.Enum.GetValues(typeof(MaterialType));
+
+        for (int i = 0; i < count; i++)
+        {
+            var type = materialTypes[UnityEngine.Random.Range(0, materialTypes.Length)];
+            Inventory.Add(type, 1);
+        }
+
+        Debug.Log($"[GameManager] ダンジョンバトル報酬: 素材{count}個獲得（階層{CurrentFloor}）");
     }
 
     public void AddMonster(MonsterInstance monster)

@@ -136,11 +136,123 @@ public class PrepareUI : MonoBehaviour
 
         SwitchTab(PrepareTab.Formation);
         BuildDebugPanel();
+
     }
 
     // === デバッグパネル ===
 
     private GameObject debugPanel;
+
+    private void ShowFloorRewardPanel()
+    {
+        var canvas = FindDeep(transform.root, "PrepareCanvas") ?? transform;
+
+        // 背景オーバーレイ
+        var overlay = new GameObject("RewardOverlay");
+        overlay.transform.SetParent(canvas, false);
+        var overlayRt = overlay.AddComponent<RectTransform>();
+        overlayRt.anchorMin = Vector2.zero;
+        overlayRt.anchorMax = Vector2.one;
+        overlayRt.offsetMin = Vector2.zero;
+        overlayRt.offsetMax = Vector2.zero;
+        overlay.AddComponent<Image>().color = new Color(0, 0, 0, 0.7f);
+
+        // パネル
+        var panel = new GameObject("RewardPanel");
+        panel.transform.SetParent(overlay.transform, false);
+        var panelRt = panel.AddComponent<RectTransform>();
+        panelRt.anchorMin = new Vector2(0.15f, 0.2f);
+        panelRt.anchorMax = new Vector2(0.85f, 0.8f);
+        panelRt.offsetMin = Vector2.zero;
+        panelRt.offsetMax = Vector2.zero;
+        panel.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.22f, 0.95f);
+
+        var vlg = panel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 15;
+        vlg.padding = new RectOffset(30, 30, 30, 30);
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // タイトル
+        var titleGo = new GameObject("Title");
+        titleGo.transform.SetParent(panel.transform, false);
+        titleGo.AddComponent<RectTransform>();
+        titleGo.AddComponent<LayoutElement>().preferredHeight = 50;
+        var titleTmp = titleGo.AddComponent<TextMeshProUGUI>();
+        titleTmp.text = $"階層 {gm.CurrentFloor - 1} クリア！ 報酬を選んでください";
+        titleTmp.fontSize = 24;
+        titleTmp.fontStyle = FontStyles.Bold;
+        titleTmp.color = new Color(1f, 0.9f, 0.5f);
+        titleTmp.alignment = TextAlignmentOptions.Center;
+
+        // 選択肢ボタン
+        CreateRewardButton(panel.transform, "全回復",
+            "味方全員のHPを全回復する",
+            new Color(0.2f, 0.7f, 0.3f), () => {
+                gm.ClaimRewardHeal();
+                Destroy(overlay);
+                RefreshAll();
+            });
+
+        CreateRewardButton(panel.transform, $"素材 ×{3 + gm.CurrentFloor}",
+            "ランダムな素材を獲得する",
+            new Color(0.8f, 0.6f, 0.2f), () => {
+                gm.ClaimRewardMaterials();
+                Destroy(overlay);
+                RefreshAll();
+            });
+
+        CreateRewardButton(panel.transform, $"HP50%回復 + 素材 ×{1 + gm.CurrentFloor / 2}",
+            "HPを半分回復し、少量の素材を獲得する",
+            new Color(0.3f, 0.5f, 0.8f), () => {
+                gm.ClaimRewardBalanced();
+                Destroy(overlay);
+                RefreshAll();
+            });
+    }
+
+    private void CreateRewardButton(Transform parent, string title, string desc, Color color, UnityEngine.Events.UnityAction onClick)
+    {
+        var go = new GameObject("RewardBtn");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<RectTransform>();
+        go.AddComponent<LayoutElement>().preferredHeight = 80;
+        go.AddComponent<Image>().color = color;
+
+        var btn = go.AddComponent<Button>();
+        btn.onClick.AddListener(onClick);
+
+        var btnVlg = go.AddComponent<VerticalLayoutGroup>();
+        btnVlg.spacing = 2;
+        btnVlg.padding = new RectOffset(15, 15, 10, 10);
+        btnVlg.childControlWidth = true;
+        btnVlg.childControlHeight = true;
+        btnVlg.childForceExpandWidth = true;
+        btnVlg.childForceExpandHeight = false;
+
+        var tGo = new GameObject("Title");
+        tGo.transform.SetParent(go.transform, false);
+        tGo.AddComponent<RectTransform>();
+        tGo.AddComponent<LayoutElement>().preferredHeight = 35;
+        var tTmp = tGo.AddComponent<TextMeshProUGUI>();
+        tTmp.text = title;
+        tTmp.fontSize = 22;
+        tTmp.fontStyle = FontStyles.Bold;
+        tTmp.color = Color.white;
+        tTmp.alignment = TextAlignmentOptions.Center;
+
+        var dGo = new GameObject("Desc");
+        dGo.transform.SetParent(go.transform, false);
+        dGo.AddComponent<RectTransform>();
+        dGo.AddComponent<LayoutElement>().preferredHeight = 25;
+        var dTmp = dGo.AddComponent<TextMeshProUGUI>();
+        dTmp.text = desc;
+        dTmp.fontSize = 14;
+        dTmp.color = new Color(1f, 1f, 1f, 0.8f);
+        dTmp.alignment = TextAlignmentOptions.Center;
+    }
 
     private void BuildDebugPanel()
     {
@@ -308,7 +420,7 @@ public class PrepareUI : MonoBehaviour
     private void RefreshHeader()
     {
         if (waveText != null)
-            waveText.text = $"Wave {gm.CurrentWave + 1} / {gm.EnemyWaves.Length}";
+            waveText.text = $"階層 {gm.CurrentFloor}";
 
         var materialTypes = new[] {
             MaterialType.AnimalSkull, MaterialType.HumanSkull,
@@ -320,6 +432,45 @@ public class PrepareUI : MonoBehaviour
         {
             int amount = gm.Inventory.GetAmount(materialTypes[i]);
             materialTexts[i].text = $"{names[i]}: {amount}";
+        }
+
+        // 触媒表示（素材の最後のテキストの隣に動的追加）
+        UpdateCatalystDisplay();
+    }
+
+    private GameObject catalystLabel;
+
+    private void UpdateCatalystDisplay()
+    {
+        // 素材パネルの隣に触媒を表示
+        var matPanel = FindDeep(transform, "MaterialPanel");
+        if (matPanel == null) return;
+
+        if (catalystLabel == null)
+        {
+            catalystLabel = new GameObject("CatalystLabel");
+            catalystLabel.transform.SetParent(matPanel, false);
+            catalystLabel.AddComponent<RectTransform>();
+            var le = catalystLabel.AddComponent<LayoutElement>();
+            le.preferredWidth = 120;
+            le.flexibleWidth = 0;
+            var tmp = catalystLabel.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = 16;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.alignment = TextAlignmentOptions.Center;
+        }
+
+        var text = catalystLabel.GetComponent<TextMeshProUGUI>();
+        int count = gm.Inventory.CatalystCount;
+        if (count > 0)
+        {
+            catalystLabel.SetActive(true);
+            text.text = $"<color=#FFD700>触媒: {count}</color>";
+            text.color = new Color(1f, 0.85f, 0.2f);
+        }
+        else
+        {
+            catalystLabel.SetActive(false);
         }
     }
 
@@ -333,7 +484,18 @@ public class PrepareUI : MonoBehaviour
 
         var formation = gm.Formation.GetFormation();
 
-        foreach (var monster in gm.OwnedMonsters)
+        // コスト順でソート
+        var sortedMonsters = new System.Collections.Generic.List<MonsterInstance>(gm.OwnedMonsters);
+        sortedMonsters.Sort((a, b) =>
+        {
+            int costA = GetRecipeCost(a.baseData);
+            int costB = GetRecipeCost(b.baseData);
+            if (costA != costB) return costA.CompareTo(costB);
+            if (a.baseData.slotSize != b.baseData.slotSize) return a.baseData.slotSize.CompareTo(b.baseData.slotSize);
+            return a.baseData.monsterType.CompareTo(b.baseData.monsterType);
+        });
+
+        foreach (var monster in sortedMonsters)
         {
             bool inFormation = false;
             foreach (var f in formation)
@@ -360,7 +522,9 @@ public class PrepareUI : MonoBehaviour
             PlaceImage(go.transform, d.monsterType);
             var info = PlaceInfo(go.transform);
 
-            AddTmpLE(info.transform, "NameText", d.monsterName, 24, FontStyles.Bold, Color.white, 28, TextAlignmentOptions.Center);
+            var rankLabel = monster.GetRankLabel();
+            var rankColor = monster.GetRankColor();
+            AddTmpLE(info.transform, "NameText", $"<color=#{ColorUtility.ToHtmlStringRGB(rankColor)}>[{rankLabel}]</color> {d.monsterName}", 24, FontStyles.Bold, Color.white, 28, TextAlignmentOptions.Center);
             AddTmpLE(info.transform, "StatsText",
                 $"HP:{monster.currentHp}/{monster.maxHp}  ATK:{monster.currentAttack}  SPD:{d.speed}  射程:{d.range}  枠:{d.slotSize}",
                 18, FontStyles.Normal, new Color(0.8f, 0.8f, 0.9f), 22, TextAlignmentOptions.Center);
@@ -398,7 +562,18 @@ public class PrepareUI : MonoBehaviour
         var allData = gm.Crafting.AllMonsterData;
         if (allData == null) return;
 
-        foreach (var data in allData)
+        // コスト順（安い→高い）でソート。同コストなら枠数が少ない順
+        var sorted = new System.Collections.Generic.List<MonsterDataSO>(allData);
+        sorted.Sort((a, b) =>
+        {
+            int costA = GetRecipeCost(a);
+            int costB = GetRecipeCost(b);
+            if (costA != costB) return costA.CompareTo(costB);
+            if (a.slotSize != b.slotSize) return a.slotSize.CompareTo(b.slotSize);
+            return a.monsterType.CompareTo(b.monsterType);
+        });
+
+        foreach (var data in sorted)
         {
             if (data.recipeMaterials == null) continue;
             bool canAfford = gm.Inventory.CanAfford(data.recipeMaterials);
@@ -432,6 +607,15 @@ public class PrepareUI : MonoBehaviour
         }
     }
 
+    private static int GetRecipeCost(MonsterDataSO data)
+    {
+        if (data == null || data.recipeMaterials == null) return 0;
+        int cost = 0;
+        foreach (var entry in data.recipeMaterials)
+            cost += entry.amount;
+        return cost;
+    }
+
     private string FormatRecipe(RecipeEntry[] recipe)
     {
         if (recipe == null) return "";
@@ -453,7 +637,19 @@ public class PrepareUI : MonoBehaviour
             Destroy(child.gameObject);
 
         var formation = gm.Formation.GetFormation();
-        foreach (var monster in gm.OwnedMonsters)
+
+        // コスト順でソート
+        var sortedMonsters = new System.Collections.Generic.List<MonsterInstance>(gm.OwnedMonsters);
+        sortedMonsters.Sort((a, b) =>
+        {
+            int costA = GetRecipeCost(a.baseData);
+            int costB = GetRecipeCost(b.baseData);
+            if (costA != costB) return costA.CompareTo(costB);
+            if (a.baseData.slotSize != b.baseData.slotSize) return a.baseData.slotSize.CompareTo(b.baseData.slotSize);
+            return a.baseData.monsterType.CompareTo(b.baseData.monsterType);
+        });
+
+        foreach (var monster in sortedMonsters)
         {
             bool inFormation = false;
             foreach (var f in formation)
@@ -637,14 +833,121 @@ public class PrepareUI : MonoBehaviour
 
     private void OnCraftSelected(MonsterDataSO data)
     {
-        var monster = gm.Crafting.Craft(data, gm.Inventory);
+        ShowCraftDialog(data);
+    }
+
+    private void DoCraft(MonsterDataSO data, bool useCatalyst)
+    {
+        var monster = gm.Crafting.Craft(data, gm.Inventory, useCatalyst);
         if (monster != null)
         {
             gm.AddMonster(monster);
-            ShowMessage($"{data.monsterName}を練成しました！");
+            string catalystMsg = useCatalyst ? "（触媒使用）" : "";
+            var rc = monster.GetRankColor();
+            ShowMessage($"<color=#{ColorUtility.ToHtmlStringRGB(rc)}>[{monster.GetRankLabel()}]</color> {data.monsterName}を練成！{catalystMsg}");
             RefreshHeader();
             RefreshCraftList();
+            RefreshMonsterList();
         }
+    }
+
+    private GameObject craftOverlay;
+
+    private void ShowCraftDialog(MonsterDataSO data)
+    {
+        if (craftOverlay != null) Destroy(craftOverlay);
+
+        var canvas = FindDeep(transform.root, "PrepareCanvas") ?? transform;
+        craftOverlay = new GameObject("CraftOverlay");
+        craftOverlay.transform.SetParent(canvas, false);
+        var oRt = craftOverlay.AddComponent<RectTransform>();
+        oRt.anchorMin = Vector2.zero; oRt.anchorMax = Vector2.one;
+        oRt.offsetMin = Vector2.zero; oRt.offsetMax = Vector2.zero;
+        craftOverlay.AddComponent<Image>().color = new Color(0, 0, 0, 0.6f);
+
+        var panel = new GameObject("Panel");
+        panel.transform.SetParent(craftOverlay.transform, false);
+        var pRt = panel.AddComponent<RectTransform>();
+        pRt.anchorMin = new Vector2(0.2f, 0.25f);
+        pRt.anchorMax = new Vector2(0.8f, 0.75f);
+        pRt.offsetMin = Vector2.zero; pRt.offsetMax = Vector2.zero;
+        panel.AddComponent<Image>().color = new Color(0.15f, 0.17f, 0.25f, 0.95f);
+
+        var vlg = panel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 15; vlg.padding = new RectOffset(25, 25, 25, 25);
+        vlg.childControlWidth = true; vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+
+        // タイトル
+        var tGo = new GameObject("Title");
+        tGo.transform.SetParent(panel.transform, false);
+        tGo.AddComponent<RectTransform>();
+        tGo.AddComponent<LayoutElement>().preferredHeight = 40;
+        var tTmp = tGo.AddComponent<TextMeshProUGUI>();
+        tTmp.text = $"{data.monsterName} を練成しますか？";
+        tTmp.fontSize = 32; tTmp.fontStyle = FontStyles.Bold;
+        tTmp.color = Color.white;
+        tTmp.alignment = TextAlignmentOptions.Center;
+
+        // ランク説明
+        var dGo = new GameObject("Desc");
+        dGo.transform.SetParent(panel.transform, false);
+        dGo.AddComponent<RectTransform>();
+        dGo.AddComponent<LayoutElement>().preferredHeight = 45;
+        var dTmp = dGo.AddComponent<TextMeshProUGUI>();
+        dTmp.text = "練成するとランクがランダムで決まります\n<color=#FFE080>触媒を使うとS・A・Bランクが出やすくなります</color>";
+        dTmp.fontSize = 22; dTmp.color = new Color(0.8f, 0.8f, 0.9f);
+        dTmp.alignment = TextAlignmentOptions.Center;
+        dTmp.richText = true;
+
+        // ボタン行
+        var row = new GameObject("Row");
+        row.transform.SetParent(panel.transform, false);
+        row.AddComponent<RectTransform>();
+        row.AddComponent<LayoutElement>().preferredHeight = 70;
+        var hlg = row.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 15; hlg.childControlWidth = true; hlg.childControlHeight = true;
+        hlg.childForceExpandWidth = true; hlg.childForceExpandHeight = true;
+
+        // 練成ボタン
+        CreateSimpleButton(row.transform, "練成", new Color(0.3f, 0.55f, 0.3f), () => {
+            Destroy(craftOverlay);
+            DoCraft(data, false);
+        });
+
+        // 触媒ボタン（所持している場合のみ表示）
+        if (gm.Inventory.CatalystCount > 0)
+        {
+            CreateSimpleButton(row.transform, $"触媒で練成\n<size=12>（残{gm.Inventory.CatalystCount}個）</size>",
+                new Color(0.75f, 0.5f, 0.15f), () => {
+                Destroy(craftOverlay);
+                DoCraft(data, true);
+            });
+        }
+
+        // キャンセルボタン
+        CreateSimpleButton(row.transform, "キャンセル", new Color(0.35f, 0.35f, 0.4f), () => {
+            Destroy(craftOverlay);
+        });
+    }
+
+    private void CreateSimpleButton(Transform parent, string text, Color color, UnityEngine.Events.UnityAction onClick)
+    {
+        var go = new GameObject("Btn");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<RectTransform>();
+        go.AddComponent<Image>().color = color;
+        go.AddComponent<Button>().onClick.AddListener(onClick);
+        var tGo = new GameObject("Text");
+        tGo.transform.SetParent(go.transform, false);
+        var tRt = tGo.AddComponent<RectTransform>();
+        tRt.anchorMin = Vector2.zero; tRt.anchorMax = Vector2.one;
+        tRt.offsetMin = new Vector2(5, 5); tRt.offsetMax = new Vector2(-5, -5);
+        var tmp = tGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = text; tmp.fontSize = 24; tmp.color = Color.white;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.richText = true;
     }
 
     private void OnDisassembleSelected(MonsterInstance monster)

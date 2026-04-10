@@ -34,7 +34,7 @@ public class DungeonGenerator
     public DungeonMap Generate(DungeonConfigSO config)
     {
         var map = new DungeonMap(config.mapWidth, config.mapHeight);
-        var rooms = GenerateRooms(config.mapWidth, config.mapHeight,
+        rooms = GenerateRooms(config.mapWidth, config.mapHeight,
             config.minRooms, config.maxRooms, config.minRoomSize, config.maxRoomSize);
 
         // 部屋をマップに書き込み
@@ -193,27 +193,69 @@ public class DungeonGenerator
     /// <summary>敵・宝箱・イベントを配置する</summary>
     public void PlaceEntities(DungeonMap map, DungeonConfigSO config)
     {
-        var walkableTiles = GetWalkableTiles(map);
+        // 入口・ボス部屋以外の部屋リスト
+        var availableRooms = new List<Room>(rooms);
+        availableRooms.RemoveAll(r => r.center == map.entrancePos || r.center == map.bossPos);
+        ShuffleList(availableRooms);
 
-        // 入口・ボス周辺は除外
-        walkableTiles.RemoveAll(t =>
+        // イベント用に部屋を専有（その部屋には他のエンティティを置かない）
+        var eventRooms = new HashSet<Room>();
+        var occupiedTiles = new HashSet<Vector2Int>();
+        int eventPlaced = 0;
+        foreach (var room in availableRooms)
+        {
+            if (eventPlaced >= config.eventCount) break;
+            eventRooms.Add(room);
+            map.entities.Add(new EntityPlacement(DungeonEntityType.Event, room.center));
+            // この部屋の全タイルを占有済みにする
+            for (int x = room.x; x < room.x + room.width; x++)
+                for (int y = room.y; y < room.y + room.height; y++)
+                    occupiedTiles.Add(new Vector2Int(x, y));
+            eventPlaced++;
+        }
+
+        // 宝箱配置可能な部屋（入口・ボス・イベント部屋を除く）
+        var treasureRooms = new List<Room>();
+        foreach (var room in rooms)
+        {
+            if (room.center == map.entrancePos || room.center == map.bossPos) continue;
+            if (eventRooms.Contains(room)) continue;
+            treasureRooms.Add(room);
+        }
+        ShuffleList(treasureRooms);
+
+        // 各部屋に宝箱を1つずつ配置
+        int treasurePlaced = 0;
+        foreach (var room in treasureRooms)
+        {
+            if (treasurePlaced >= config.treasureCount) break;
+            // 部屋内のランダムな空きタイルに配置
+            var candidates = new List<Vector2Int>();
+            for (int x = room.x; x < room.x + room.width; x++)
+                for (int y = room.y; y < room.y + room.height; y++)
+                    if (map.IsWalkable(x, y) && map.GetEntityAt(x, y) == null && !occupiedTiles.Contains(new Vector2Int(x, y)))
+                        candidates.Add(new Vector2Int(x, y));
+            if (candidates.Count == 0) continue;
+            var pos = candidates[Random.Range(0, candidates.Count)];
+            map.entities.Add(new EntityPlacement(DungeonEntityType.Treasure, pos));
+            treasurePlaced++;
+        }
+
+        // 全歩行可能タイル（通路含む、占有済み除外）
+        var allWalkable = GetWalkableTiles(map);
+        allWalkable.RemoveAll(t =>
+            occupiedTiles.Contains(t) ||
             Vector2Int.Distance(t, map.entrancePos) < 3f ||
             Vector2Int.Distance(t, map.bossPos) < 3f);
 
-        // 距離に基づいてソート（入口からの距離）
-        walkableTiles.Sort((a, b) =>
-            Vector2Int.Distance(a, map.entrancePos).CompareTo(Vector2Int.Distance(b, map.entrancePos)));
+        // 敵シンボル配置（通路含む全エリア、距離に応じてランク決定）
+        float maxDist = allWalkable.Count > 0 ?
+            Vector2Int.Distance(allWalkable[allWalkable.Count - 1], map.entrancePos) : 1f;
 
-        // 敵シンボル配置（距離に応じてランクを割り当て）
+        // 距離ソートしてからシャッフル（ランク計算用にmaxDistだけ先に取得）
+        ShuffleList(allWalkable);
         int enemyPlaced = 0;
-        float maxDist = walkableTiles.Count > 0 ?
-            Vector2Int.Distance(walkableTiles[walkableTiles.Count - 1], map.entrancePos) : 1f;
-
-        // シャッフルして配置候補を作るが、ランクは距離で決定
-        var enemyCandidates = new List<Vector2Int>(walkableTiles);
-        ShuffleList(enemyCandidates);
-
-        foreach (var pos in enemyCandidates)
+        foreach (var pos in allWalkable)
         {
             if (enemyPlaced >= config.enemyCount) break;
             if (map.GetEntityAt(pos.x, pos.y) != null) continue;
@@ -228,31 +270,10 @@ public class DungeonGenerator
             map.entities.Add(new EntityPlacement(DungeonEntityType.Enemy, pos, rank));
             enemyPlaced++;
         }
-
-        // 宝箱配置
-        var treasureCandidates = new List<Vector2Int>(walkableTiles);
-        ShuffleList(treasureCandidates);
-        int treasurePlaced = 0;
-        foreach (var pos in treasureCandidates)
-        {
-            if (treasurePlaced >= config.treasureCount) break;
-            if (map.GetEntityAt(pos.x, pos.y) != null) continue;
-            map.entities.Add(new EntityPlacement(DungeonEntityType.Treasure, pos));
-            treasurePlaced++;
-        }
-
-        // イベント配置
-        var eventCandidates = new List<Vector2Int>(walkableTiles);
-        ShuffleList(eventCandidates);
-        int eventPlaced = 0;
-        foreach (var pos in eventCandidates)
-        {
-            if (eventPlaced >= config.eventCount) break;
-            if (map.GetEntityAt(pos.x, pos.y) != null) continue;
-            map.entities.Add(new EntityPlacement(DungeonEntityType.Event, pos));
-            eventPlaced++;
-        }
     }
+
+    // GenerateRooms で生成した部屋リストを保持（PlaceEntities で使用）
+    private List<Room> rooms;
 
     private List<Vector2Int> GetWalkableTiles(DungeonMap map)
     {

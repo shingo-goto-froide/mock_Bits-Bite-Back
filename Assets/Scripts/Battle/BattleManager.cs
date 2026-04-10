@@ -65,13 +65,6 @@ public class BattleManager : MonoBehaviour
             {
                 var data = pool[UnityEngine.Random.Range(0, pool.Length)];
                 var enemyMonster = new MonsterInstance(data);
-                if (wave.randomLevel > 1)
-                {
-                    float multiplier = 1f + (wave.randomLevel - 1) * 0.5f;
-                    enemyMonster.maxHp = Mathf.RoundToInt(enemyMonster.maxHp * multiplier);
-                    enemyMonster.currentHp = enemyMonster.maxHp;
-                    enemyMonster.currentAttack = Mathf.RoundToInt(enemyMonster.currentAttack * multiplier);
-                }
                 var unit = CreateBattleUnit(enemyMonster, enemyIndex, false);
                 enemyUnits.Add(unit);
                 enemyIndex += data.slotSize;
@@ -83,13 +76,6 @@ public class BattleManager : MonoBehaviour
             foreach (var entry in wave.enemies)
             {
                 var enemyMonster = new MonsterInstance(entry.monsterData);
-                if (entry.level > 1)
-                {
-                    float multiplier = 1f + (entry.level - 1) * 0.5f;
-                    enemyMonster.maxHp = Mathf.RoundToInt(enemyMonster.maxHp * multiplier);
-                    enemyMonster.currentHp = enemyMonster.maxHp;
-                    enemyMonster.currentAttack = Mathf.RoundToInt(enemyMonster.currentAttack * multiplier);
-                }
                 var unit = CreateBattleUnit(enemyMonster, enemyIndex, false);
                 enemyUnits.Add(unit);
                 enemyIndex += entry.monsterData.slotSize;
@@ -321,25 +307,25 @@ public class BattleManager : MonoBehaviour
             return targets;
         }
 
-        // 通常ターゲット: 射程内で一番遠い敵
-        BattleUnit farthest = null;
-        int farthestLivePos = -1;
+        // 通常ターゲット: 射程内で一番近い敵
+        BattleUnit nearest = null;
+        int nearestLivePos = int.MaxValue;
 
         foreach (var enemy in livingEnemies)
         {
             int targetLivePos = GetLivePosition(enemy);
             if (attackerLivePos + targetLivePos < range)
             {
-                if (farthest == null || targetLivePos > farthestLivePos)
+                if (nearest == null || targetLivePos < nearestLivePos)
                 {
-                    farthest = enemy;
-                    farthestLivePos = targetLivePos;
+                    nearest = enemy;
+                    nearestLivePos = targetLivePos;
                 }
             }
         }
 
         // 射程内に敵がいなければ空リストを返す（攻撃スキップ）
-        if (farthest == null) return targets;
+        if (nearest == null) return targets;
 
         if (attacker.monster.baseData.isPenetrate)
         {
@@ -352,7 +338,7 @@ public class BattleManager : MonoBehaviour
         }
         else
         {
-            targets.Add(farthest);
+            targets.Add(nearest);
         }
 
         return targets;

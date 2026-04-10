@@ -16,6 +16,7 @@ public class BattleUI : MonoBehaviour
     private ScrollRect logScrollRect;
     private Button speedButton;
     private TMP_Text speedButtonText;
+    private Button skipButton;
     private GameObject resultPanel;
     private TMP_Text resultText;
     private Button continueButton;
@@ -28,9 +29,9 @@ public class BattleUI : MonoBehaviour
     private List<BattleUnitView> playerViews = new List<BattleUnitView>();
     private List<BattleUnitView> enemyViews = new List<BattleUnitView>();
     private Dictionary<BattleUnit, BattleUnitView> unitViewMap = new Dictionary<BattleUnit, BattleUnitView>();
-    private float[] speedOptions = { 1f, 0.5f, 0.2f };
-    private string[] speedLabels = { "1x", "2x", "5x" };
-    private int currentSpeedIndex;
+    private float[] speedOptions = { 1f, 0.5f, 0.2f, 0.1f };
+    private string[] speedLabels = { "1x", "2x", "5x", "10x" };
+    private static int currentSpeedIndex;
     private string fullLog = "";
 
     private void Start()
@@ -96,18 +97,23 @@ public class BattleUI : MonoBehaviour
         battleManager.OnUnitEffectEvent += OnUnitEffect;
         battleManager.OnBuffDebuffEvent += OnBuffDebuff;
 
-        if (speedButton != null) speedButton.onClick.AddListener(OnSpeedClicked);
+        if (speedButton != null)
+        {
+            speedButton.onClick.AddListener(OnSpeedClicked);
+            CreateSkipButton(speedButton.transform);
+            // 前回の速度を引き継ぎ
+            battleManager.SetTurnSpeed(speedOptions[currentSpeedIndex]);
+            if (speedButtonText != null)
+                speedButtonText.text = $"速度: {speedLabels[currentSpeedIndex]}";
+        }
         if (continueButton != null) continueButton.onClick.AddListener(OnContinueClicked);
         if (rewardContinueButton != null) rewardContinueButton.onClick.AddListener(OnRewardContinueClicked);
 
         // バトル開始
-        Debug.Log("[BattleUI] バトルセットアップ開始");
         var formation = gm.Formation.GetFormation();
-        Debug.Log($"[BattleUI] 隊列: {formation.Count}体, IsDungeonBattle={gm.IsDungeonBattle}");
 
         if (gm.IsDungeonBattle && gm.DungeonBattleWave != null)
         {
-            Debug.Log($"[BattleUI] ダンジョンバトル: Wave={gm.DungeonBattleWave.name}, Boss={gm.IsBossBattle}");
             battleManager.isBossBattle = gm.IsBossBattle;
             battleManager.returnToDungeon = !gm.IsBossBattle;
             battleManager.SetupBattle(formation, gm.DungeonBattleWave, gm.AllMonsterData);
@@ -116,7 +122,6 @@ public class BattleUI : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[BattleUI] 通常バトル: CurrentWave={gm.CurrentWave}");
             if (gm.CurrentWave < gm.EnemyWaves.Length)
                 battleManager.SetupBattle(formation, gm.EnemyWaves[gm.CurrentWave], gm.AllMonsterData);
             battleManager.isBossBattle = false;
@@ -125,11 +130,8 @@ public class BattleUI : MonoBehaviour
                 waveText.text = $"Wave {gm.CurrentWave + 1}";
         }
 
-        Debug.Log($"[BattleUI] SetupBattle完了: 味方{battleManager.playerUnits.Count}, 敵{battleManager.enemyUnits.Count}");
         SetupViews();
-        Debug.Log("[BattleUI] SetupViews完了, StartBattle呼び出し");
         battleManager.StartBattle();
-        Debug.Log("[BattleUI] StartBattle完了（コルーチン開始）");
     }
 
     private TMP_Text FindText(string name)
@@ -374,39 +376,182 @@ public class BattleUI : MonoBehaviour
 
     private void OnBattleEnd(BattleResult result)
     {
+        var gm = GameManager.Instance;
+        bool isBossVictory = result == BattleResult.Victory && gm != null && gm.IsDungeonBattle && gm.IsBossBattle;
+
+        if (isBossVictory)
+        {
+            // ボス撃破 → 報酬選択パネルを直接表示（結果パネルの代わり）
+            ShowFloorRewardPanel();
+            return;
+        }
+
         if (resultPanel != null)
         {
             resultPanel.SetActive(true);
             if (resultText != null)
-            {
-                if (result == BattleResult.Victory)
-                {
-                    var gm = GameManager.Instance;
-                    if (gm != null && gm.IsDungeonBattle && gm.IsBossBattle)
-                        resultText.text = "ボス撃破！ダンジョンクリア！";
-                    else
-                        resultText.text = "勝利！";
-                }
-                else
-                {
-                    resultText.text = "全滅…";
-                }
-            }
+                resultText.text = result == BattleResult.Victory ? "勝利！" : "全滅…";
 
-            // ダンジョンバトルの場合、Continueボタンのテキストを変更
             if (continueButton != null)
             {
-                var gm = GameManager.Instance;
                 var btnText = continueButton.GetComponentInChildren<TMP_Text>();
                 if (btnText != null && gm != null && gm.IsDungeonBattle)
-                {
-                    if (result == BattleResult.Victory)
-                        btnText.text = gm.IsBossBattle ? "タイトルへ" : "続ける";
-                    else
-                        btnText.text = "タイトルへ";
-                }
+                    btnText.text = result == BattleResult.Victory ? "続ける" : "タイトルへ";
             }
         }
+    }
+
+    private void ShowFloorRewardPanel()
+    {
+        var gm = GameManager.Instance;
+        int floor = gm.CurrentFloor;
+
+        // 背景オーバーレイ
+        var overlay = new GameObject("RewardOverlay");
+        overlay.transform.SetParent(transform, false);
+        var overlayRt = overlay.AddComponent<RectTransform>();
+        overlayRt.anchorMin = Vector2.zero;
+        overlayRt.anchorMax = Vector2.one;
+        overlayRt.offsetMin = Vector2.zero;
+        overlayRt.offsetMax = Vector2.zero;
+        overlay.AddComponent<Image>().color = new Color(0, 0, 0, 0.7f);
+
+        // パネル
+        var panel = new GameObject("RewardPanel");
+        panel.transform.SetParent(overlay.transform, false);
+        var panelRt = panel.AddComponent<RectTransform>();
+        panelRt.anchorMin = new Vector2(0.15f, 0.15f);
+        panelRt.anchorMax = new Vector2(0.85f, 0.85f);
+        panelRt.offsetMin = Vector2.zero;
+        panelRt.offsetMax = Vector2.zero;
+        panel.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.22f, 0.95f);
+
+        var vlg = panel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 15;
+        vlg.padding = new RectOffset(20, 20, 20, 20);
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // タイトル
+        var titleGo = new GameObject("Title");
+        titleGo.transform.SetParent(panel.transform, false);
+        titleGo.AddComponent<RectTransform>();
+        titleGo.AddComponent<LayoutElement>().preferredHeight = 50;
+        var titleTmp = titleGo.AddComponent<TextMeshProUGUI>();
+        titleTmp.text = $"階層 {floor} クリア！ 報酬を選んでください";
+        titleTmp.fontSize = 24;
+        titleTmp.fontStyle = FontStyles.Bold;
+        titleTmp.color = new Color(1f, 0.9f, 0.5f);
+        titleTmp.alignment = TextAlignmentOptions.Center;
+
+        // 横並びコンテナ（均等3分割）
+        var row = new GameObject("RewardRow");
+        row.transform.SetParent(panel.transform, false);
+        row.AddComponent<RectTransform>();
+        row.AddComponent<LayoutElement>().flexibleHeight = 1;
+        var hlg = row.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 20;
+        hlg.childControlWidth = true;
+        hlg.childControlHeight = true;
+        hlg.childForceExpandWidth = true;
+        hlg.childForceExpandHeight = true;
+        hlg.childAlignment = TextAnchor.MiddleCenter;
+
+        int matCount = 3 + floor;
+        int balMatCount = 1 + floor / 2;
+
+        CreateRewardBtn(row.transform, "全回復",
+            new Color(0.2f, 0.7f, 0.3f),
+            "味方全員のHPを\n全回復する", () => {
+                gm.ClaimRewardHeal();
+                gm.OnBossDefeated();
+            });
+
+        CreateRewardBtn(row.transform, $"素材×{matCount}",
+            new Color(0.8f, 0.6f, 0.2f),
+            "ランダムな素材を\n獲得する", () => {
+                gm.ClaimRewardMaterials();
+                gm.OnBossDefeated();
+            });
+
+        CreateRewardBtn(row.transform, "回復+素材",
+            new Color(0.3f, 0.5f, 0.8f),
+            $"HP50%回復 +\n素材×{balMatCount}", () => {
+                gm.ClaimRewardBalanced();
+                gm.OnBossDefeated();
+            });
+    }
+
+    private void CreateRewardBtn(Transform parent, string iconText, Color iconColor, string desc, UnityEngine.Events.UnityAction onClick)
+    {
+        // 外枠（ボタン全体）
+        var go = new GameObject("RewardBtn");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<RectTransform>();
+        go.AddComponent<Image>().color = new Color(0.15f, 0.17f, 0.25f);
+        go.AddComponent<Button>().onClick.AddListener(onClick);
+
+        var vlg = go.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 12;
+        vlg.padding = new RectOffset(10, 10, 10, 10);
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = false;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+
+        // 上部スペーサー（中央寄せ用）
+        var spacerTop = new GameObject("SpacerTop");
+        spacerTop.transform.SetParent(go.transform, false);
+        spacerTop.AddComponent<RectTransform>();
+        spacerTop.AddComponent<LayoutElement>().flexibleHeight = 1;
+
+        // 正方形アイコン（色付き背景 + テキスト）
+        var iconGo = new GameObject("Icon");
+        iconGo.transform.SetParent(go.transform, false);
+        iconGo.AddComponent<RectTransform>();
+        var iconLe = iconGo.AddComponent<LayoutElement>();
+        iconLe.preferredHeight = 400;
+        iconLe.minHeight = 400;
+        iconGo.AddComponent<Image>().color = iconColor;
+        var arf = iconGo.AddComponent<AspectRatioFitter>();
+        arf.aspectMode = AspectRatioFitter.AspectMode.HeightControlsWidth;
+        arf.aspectRatio = 1f;
+
+        var iconTextGo = new GameObject("IconText");
+        iconTextGo.transform.SetParent(iconGo.transform, false);
+        var itRt = iconTextGo.AddComponent<RectTransform>();
+        itRt.anchorMin = Vector2.zero;
+        itRt.anchorMax = Vector2.one;
+        itRt.offsetMin = new Vector2(8, 8);
+        itRt.offsetMax = new Vector2(-8, -8);
+        var itTmp = iconTextGo.AddComponent<TextMeshProUGUI>();
+        itTmp.text = iconText;
+        itTmp.fontSize = 52;
+        itTmp.fontStyle = FontStyles.Bold;
+        itTmp.color = Color.white;
+        itTmp.alignment = TextAlignmentOptions.Center;
+        itTmp.enableWordWrapping = true;
+
+        // 説明テキスト
+        var descGo = new GameObject("Desc");
+        descGo.transform.SetParent(go.transform, false);
+        descGo.AddComponent<RectTransform>();
+        descGo.AddComponent<LayoutElement>().preferredHeight = 80;
+        var descTmp = descGo.AddComponent<TextMeshProUGUI>();
+        descTmp.text = desc;
+        descTmp.fontSize = 24;
+        descTmp.color = new Color(0.85f, 0.85f, 0.9f);
+        descTmp.alignment = TextAlignmentOptions.Center;
+        descTmp.enableWordWrapping = true;
+
+        // 下部スペーサー（中央寄せ用）
+        var spacerBot = new GameObject("SpacerBot");
+        spacerBot.transform.SetParent(go.transform, false);
+        spacerBot.AddComponent<RectTransform>();
+        spacerBot.AddComponent<LayoutElement>().flexibleHeight = 1;
     }
 
     private void OnLog(string message)
@@ -419,6 +564,115 @@ public class BattleUI : MonoBehaviour
             if (logScrollRect != null)
                 logScrollRect.verticalNormalizedPosition = 0f;
         }
+    }
+
+    private void CreateSkipButton(Transform speedBtnTransform)
+    {
+        // 速度ボタンの兄弟として、速度ボタンの直前に挿入
+        var go = new GameObject("SkipButton");
+        go.transform.SetParent(speedBtnTransform.parent, false);
+        go.transform.SetSiblingIndex(speedBtnTransform.GetSiblingIndex());
+
+        var rt = go.AddComponent<RectTransform>();
+        var speedRt = speedBtnTransform.GetComponent<RectTransform>();
+        // 速度ボタンと同じアンカー・ピボット
+        rt.anchorMin = speedRt.anchorMin;
+        rt.anchorMax = speedRt.anchorMax;
+        rt.pivot = speedRt.pivot;
+        // 速度ボタンの上に配置（高さ分 + マージン）
+        float btnHeight = speedRt.rect.height > 0 ? speedRt.rect.height : 40f;
+        rt.anchoredPosition = speedRt.anchoredPosition + new Vector2(0, btnHeight + 10);
+        rt.sizeDelta = speedRt.sizeDelta;
+
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0.7f, 0.2f, 0.2f);
+
+        skipButton = go.AddComponent<Button>();
+        skipButton.onClick.AddListener(OnSkipClicked);
+
+        var textGo = new GameObject("Text");
+        textGo.transform.SetParent(go.transform, false);
+        var textRt = textGo.AddComponent<RectTransform>();
+        textRt.anchorMin = Vector2.zero;
+        textRt.anchorMax = Vector2.one;
+        textRt.offsetMin = Vector2.zero;
+        textRt.offsetMax = Vector2.zero;
+        var tmp = textGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = "スキップ";
+        tmp.fontSize = 16;
+        tmp.color = Color.white;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.fontStyle = FontStyles.Bold;
+    }
+
+    private void OnSkipClicked()
+    {
+        if (battleManager == null || !battleManager.isAutoPlaying) return;
+
+        // バトルを即座に決着させる（演出なしでターンを高速回し）
+        battleManager.StopAllCoroutines();
+        battleManager.isAutoPlaying = false;
+
+        // 勝敗が決まるまでターンを回す（最大200ターン）
+        for (int i = 0; i < 200; i++)
+        {
+            // ターン開始時の状態異常
+            var allUnits = new List<BattleUnit>();
+            allUnits.AddRange(battleManager.playerUnits);
+            allUnits.AddRange(battleManager.enemyUnits);
+            foreach (var unit in allUnits)
+            {
+                if (!unit.isAlive) continue;
+                unit.ProcessTurnStartEffects(battleManager.Balance);
+                if (!unit.monster.IsAlive()) unit.isAlive = false;
+            }
+
+            var result = battleManager.CheckBattleEnd();
+            if (result.HasValue)
+            {
+                battleManager.AddLog($"=== {(result.Value == BattleResult.Victory ? "勝利" : "全滅")}（スキップ）===");
+                // BattleEndイベントを直接発火
+                OnBattleEnd(result.Value);
+                return;
+            }
+
+            // 行動順に攻撃
+            var order = battleManager.GetActionOrder();
+            foreach (var unit in order)
+            {
+                if (!unit.isAlive) continue;
+
+                // ピヨリチェック
+                if (unit.HasStatusEffect(StatusEffectType.Stun))
+                {
+                    if (UnityEngine.Random.value < battleManager.Balance.stunChance)
+                        continue;
+                }
+
+                // 攻撃
+                var targets = battleManager.FindTarget(unit);
+                foreach (var target in targets)
+                {
+                    battleManager.ApplyDamage(unit, target);
+                    if (!target.isAlive)
+                    {
+                        // 死亡時能力は省略（スキップモード）
+                    }
+                }
+
+                result = battleManager.CheckBattleEnd();
+                if (result.HasValue)
+                {
+                    battleManager.AddLog($"=== {(result.Value == BattleResult.Victory ? "勝利" : "全滅")}（スキップ）===");
+                    OnBattleEnd(result.Value);
+                    return;
+                }
+            }
+        }
+
+        // 200ターン決着つかず → 引き分け扱いで敗北
+        battleManager.AddLog("=== 200ターン経過、決着つかず… ===");
+        OnBattleEnd(BattleResult.Defeat);
     }
 
     private void OnSpeedClicked()

@@ -67,6 +67,7 @@ public class DungeonUI : MonoBehaviour
         dungeonManager.OnPlayerMoved += OnPlayerMoved;
         dungeonManager.OnMessage += ShowMessage;
         dungeonManager.OnEntityInteracted += OnEntityInteracted;
+        dungeonManager.OnStatusChanged += OnStatusChanged;
 
         if (dungeonManager.Map != null)
         {
@@ -83,6 +84,7 @@ public class DungeonUI : MonoBehaviour
             dungeonManager.OnPlayerMoved -= OnPlayerMoved;
             dungeonManager.OnMessage -= ShowMessage;
             dungeonManager.OnEntityInteracted -= OnEntityInteracted;
+            dungeonManager.OnStatusChanged -= OnStatusChanged;
         }
     }
 
@@ -115,6 +117,12 @@ public class DungeonUI : MonoBehaviour
     {
         if (entity.type == DungeonEntityType.Boss)
             ShowBossConfirm();
+    }
+
+    private void OnStatusChanged()
+    {
+        UpdatePartyHp();
+        UpdateMaterials();
     }
 
     // ===== マップ構築（1回だけ） =====
@@ -189,6 +197,9 @@ public class DungeonUI : MonoBehaviour
             }
         }
 
+        // スケール確定後に緑の枠を追加（ミニマップと統一）
+        AddOutline(playerSprite, new Color(0.2f, 0.85f, 0.3f), ts);
+
         Debug.Log($"[DungeonUI] マップ構築完了 {map.width}x{map.height}");
     }
 
@@ -245,6 +256,14 @@ public class DungeonUI : MonoBehaviour
     {
         if (partyHpPanel == null) return;
 
+        // HorizontalLayoutGroupの拡張を無効化（1体でも5体でも同じ幅）
+        var hlg = partyHpPanel.GetComponent<HorizontalLayoutGroup>();
+        if (hlg != null)
+        {
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = false;
+        }
+
         foreach (Transform child in partyHpPanel)
             Destroy(child.gameObject);
 
@@ -257,7 +276,9 @@ public class DungeonUI : MonoBehaviour
             var go = new GameObject(monster.baseData.monsterName);
             go.transform.SetParent(partyHpPanel, false);
             go.AddComponent<RectTransform>();
-            go.AddComponent<LayoutElement>().preferredWidth = 120;
+            var le = go.AddComponent<LayoutElement>();
+            le.preferredWidth = 120;
+            le.flexibleWidth = 0;
 
             var vlg = go.AddComponent<VerticalLayoutGroup>();
             vlg.spacing = 1;
@@ -326,8 +347,9 @@ public class DungeonUI : MonoBehaviour
 
     private void UpdateTurnText()
     {
-        if (turnText != null && dungeonManager != null)
-            turnText.text = $"ターン {dungeonManager.TurnCount}";
+        if (turnText == null) return;
+        int floor = GameManager.Instance != null ? GameManager.Instance.CurrentFloor : 1;
+        turnText.text = $"階層 {floor}  ターン {dungeonManager?.TurnCount ?? 0}";
     }
 
     public void ShowMessage(string text)
@@ -383,6 +405,41 @@ public class DungeonUI : MonoBehaviour
             DungeonTileType.BossRoom => bossRoomColor,
             _ => wallColor
         };
+    }
+
+    /// <summary>枠線（アウトライン）を子オブジェクトとして追加</summary>
+    public static void AddOutline(GameObject parent, Color color, float tileSize)
+    {
+        var outlineGo = new GameObject("Outline");
+        outlineGo.transform.SetParent(parent.transform, false);
+        outlineGo.transform.localPosition = Vector3.zero;
+        // 親のスケールを打ち消して、ワールド空間で tileSize に合わせる
+        var parentScale = parent.transform.lossyScale;
+        float scaleX = parentScale.x != 0 ? 1f / Mathf.Abs(parentScale.x) : 1f;
+        float scaleY = parentScale.y != 0 ? 1f / Mathf.Abs(parentScale.y) : 1f;
+        outlineGo.transform.localScale = new Vector3(scaleX, scaleY, 1f);
+
+        // 枠用テクスチャ（中央が透明、外周が色付き）
+        int size = 32;
+        int border = 2;
+        var tex = new Texture2D(size, size);
+        var pixels = new Color[size * size];
+        for (int x = 0; x < size; x++)
+        {
+            for (int y = 0; y < size; y++)
+            {
+                bool isBorder = x < border || x >= size - border || y < border || y >= size - border;
+                pixels[y * size + x] = isBorder ? color : Color.clear;
+            }
+        }
+        tex.SetPixels(pixels);
+        tex.filterMode = FilterMode.Point;
+        tex.Apply();
+
+        // pixelsPerUnit = size / tileSize → スプライトがワールド空間で tileSize の大きさになる
+        var sr = outlineGo.AddComponent<SpriteRenderer>();
+        sr.sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size / tileSize);
+        sr.sortingOrder = 25;
     }
 
     private Sprite CreateSquareSprite()

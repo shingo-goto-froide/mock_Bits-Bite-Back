@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -30,6 +31,7 @@ public class DungeonManager : MonoBehaviour
     public event Action<string> OnMessage;
     public event Action OnDungeonInitialized;
     public event Action<EntityPlacement> OnEntityInteracted;
+    public event Action OnStatusChanged;  // HP・素材等が変化した時
 
     private void Awake()
     {
@@ -43,15 +45,17 @@ public class DungeonManager : MonoBehaviour
         if (config == null)
             config = Resources.Load<DungeonConfigSO>("DungeonConfig");
 
-        // SOアセットに古い値が入っている場合の安全策
-        if (config != null && config.mapWidth > 20)
+        // マップサイズ強制設定
+        if (config != null)
         {
-            config.mapWidth = 15;
-            config.mapHeight = 15;
-            config.minRooms = 3;
-            config.maxRooms = 5;
+            int floor = GameManager.Instance != null ? GameManager.Instance.CurrentFloor : 1;
+            config.mapWidth = 25;
+            config.mapHeight = 25;
+            config.minRooms = Mathf.Min(3 + floor, 8);
+            config.maxRooms = Mathf.Min(5 + floor, 10);
             config.minRoomSize = 3;
-            config.maxRoomSize = 5;
+            config.maxRoomSize = 6;
+            config.enemyCount = Mathf.Min(2 + floor, 12);    // 階層1=3体、階層2=4体...
         }
     }
 
@@ -161,7 +165,9 @@ public class DungeonManager : MonoBehaviour
 
         OnPlayerMoved?.Invoke(PlayerPos);
         ProcessPlayerMove();
-        // 敵は静的配置（移動しない）。プレイヤーが踏んだらエンカウント
+
+        if (IsPlayerTurn && !isTransitioning)
+            MoveEnemies();
     }
 
     /// <summary>移動先のエンティティを処理</summary>
@@ -210,24 +216,51 @@ public class DungeonManager : MonoBehaviour
         Map.RemoveEntity(enemy);
         RemoveEntityGameObject(enemy);
 
-        Debug.Log($"[DungeonManager] エンカウント！ Rank={enemy.rank}, Wave={wave.name}");
-        OnMessage?.Invoke($"エンカウント！ Rank={enemy.rank} Wave={wave.name}");
-
-        // ★デバッグ: シーン遷移せずに戻る
-        IsPlayerTurn = true;
-        isTransitioning = false;
-        return;
-
-        /* --- 本来の処理（デバッグ後に有効化）---
+        OnMessage?.Invoke("敵と遭遇！バトル開始！");
         SaveDungeonState();
+
+        Debug.Log($"[DungeonManager] エンカウント！ Rank={enemy.rank}, Wave={wave.name}");
 
         var gm = GameManager.Instance;
         if (gm != null)
         {
             gm.SetDungeonBattle(wave, false);
-            SceneManager.LoadSceneAsync("BattleScene");
+            StartCoroutine(TransitionToBattle());
         }
-        */
+    }
+
+    /// <summary>タイルを分割破棄してからBattleSceneへ遷移</summary>
+    private IEnumerator TransitionToBattle()
+    {
+        // DungeonUI のタイル親を探して事前破棄（シーン破棄時の負荷軽減）
+        var tilesParent = GameObject.Find("DungeonTiles");
+        if (tilesParent != null)
+        {
+            int count = tilesParent.transform.childCount;
+            int batchSize = 100;
+            for (int i = count - 1; i >= 0; i -= batchSize)
+            {
+                int start = Mathf.Max(0, i - batchSize + 1);
+                for (int j = i; j >= start; j--)
+                {
+                    Destroy(tilesParent.transform.GetChild(j).gameObject);
+                }
+                yield return null; // 1フレーム待機
+            }
+            Destroy(tilesParent);
+            yield return null;
+        }
+
+        // エンティティも事前破棄
+        foreach (var entity in Entities)
+        {
+            if (entity != null) Destroy(entity.gameObject);
+        }
+        Entities.Clear();
+        yield return null;
+
+        Debug.Log("[DungeonManager] タイル事前破棄完了、BattleScene ロード");
+        SceneManager.LoadScene("BattleScene");
     }
 
     /// <summary>宝箱を発見 → 素材をランダム付与</summary>
@@ -236,7 +269,11 @@ public class DungeonManager : MonoBehaviour
         var gm = GameManager.Instance;
         if (gm == null) return;
 
-        int count = UnityEngine.Random.Range(config.treasureMaterialMin, config.treasureMaterialMax + 1);
+        // 階層に応じて宝箱の中身が増える
+        int floor = GameManager.Instance != null ? GameManager.Instance.CurrentFloor : 1;
+        int min = config.treasureMaterialMin + (floor - 1);
+        int max = config.treasureMaterialMax + (floor - 1);
+        int count = UnityEngine.Random.Range(min, max + 1);
         var materialTypes = (MaterialType[])Enum.GetValues(typeof(MaterialType));
         var gained = new Dictionary<MaterialType, int>();
 
@@ -248,15 +285,23 @@ public class DungeonManager : MonoBehaviour
             gained[type]++;
         }
 
+        // 触媒のレアドロップ（15%）
+        bool gotCatalyst = UnityEngine.Random.value < 0.15f;
+        if (gotCatalyst)
+            gm.Inventory.AddCatalyst();
+
         // メッセージ作成
         var parts = new List<string>();
         foreach (var kvp in gained)
             parts.Add($"{GetMaterialName(kvp.Key)}x{kvp.Value}");
+        if (gotCatalyst)
+            parts.Add("触媒x1");
         string msg = $"宝箱を発見！ {string.Join(", ", parts)} を入手！";
 
         Map.RemoveEntity(treasure);
         RemoveEntityGameObject(treasure);
         OnMessage?.Invoke(msg);
+        OnStatusChanged?.Invoke();
 
         Debug.Log($"[DungeonManager] {msg}");
     }
@@ -284,6 +329,7 @@ public class DungeonManager : MonoBehaviour
 
         string msg = $"回復の泉を発見！ 味方全体のHPが回復した！（合計{totalHealed}回復）";
         OnMessage?.Invoke(msg);
+        OnStatusChanged?.Invoke();
 
         Debug.Log($"[DungeonManager] {msg}");
     }
@@ -322,7 +368,7 @@ public class DungeonManager : MonoBehaviour
         if (gm != null)
         {
             gm.SetDungeonBattle(config.bossWave, true);
-            SceneManager.LoadSceneAsync("BattleScene");
+            StartCoroutine(TransitionToBattle());
         }
     }
 
@@ -352,13 +398,19 @@ public class DungeonManager : MonoBehaviour
             var dir = GetRandomDirection();
             Vector2Int newPos = entity.gridPosition + dir;
 
-            // プレイヤー位置・他エンティティ位置・壁には移動しない
-            if (newPos == PlayerPos) continue;
+            // 壁・他エンティティには移動しない
             if (!Map.IsWalkable(newPos.x, newPos.y)) continue;
             if (HasEntityAt(newPos, entity)) continue;
 
             entity.MoveTo(newPos, TileSize);
             entity.SetVisible(Map.IsExplored(newPos.x, newPos.y));
+
+            // プレイヤーに到達 → エンカウント
+            if (newPos == PlayerPos)
+            {
+                OnEnemyEncounter(entity.placementData);
+                return;
+            }
         }
     }
 
@@ -473,50 +525,129 @@ public class DungeonManager : MonoBehaviour
         return Sprite.Create(tex, new Rect(0, 0, 16, 16), new Vector2(0.5f, 0.5f), 16);
     }
 
-    /// <summary>DungeonConfigSOの敵Wave配列が空の場合、既存EnemyWaveSOから自動割り当て</summary>
+    /// <summary>階層に応じて敵Wave配列を設定（明示テーブル）</summary>
     private void AutoPopulateWaves()
     {
         var gm = GameManager.Instance;
         if (gm == null || gm.EnemyWaves == null || gm.EnemyWaves.Length == 0) return;
 
-        var waves = gm.EnemyWaves;
+        var waveMap = new Dictionary<int, EnemyWaveSO>();
+        foreach (var w in gm.EnemyWaves)
+            waveMap[w.waveNumber] = w;
 
-        // 弱敵: Wave 1-2（序盤）
-        if (config.weakEnemyWaves == null || config.weakEnemyWaves.Length == 0)
+        int floor = gm.CurrentFloor;
+
+        // Wave難易度テーブル（番号で指定）
+        // W1:スケ×2, W8:スケ×3, W9:シャドウ+スケ×2, W2:ゾンビ+スケ×2,
+        // W10:スケ×2+弓, W11:ゾンビ+スケ+弓, W12:弓×2+僧侶,
+        // W3:ガーディアン+弓×2, W4:ガーディアン+ゾンビ+僧侶+スケ,
+        // W5:結界師+ガーディアン+α, W6:オーク+僧侶+結界師, W7:シナジー編成
+
+        int[] weakNums, medNums, strNums;
+        int bossNum;
+
+        switch (floor)
         {
-            var weak = new System.Collections.Generic.List<EnemyWaveSO>();
-            foreach (var w in waves) { if (w.waveNumber <= 2) weak.Add(w); }
-            if (weak.Count > 0) config.weakEnemyWaves = weak.ToArray();
-            Debug.Log($"[DungeonManager] weakEnemyWaves を自動設定: {weak.Count}件");
+            // === 階層1-4: スケルトン級 ===
+            case 1:
+                weakNums = new[]{ 1 };
+                medNums  = new[]{ 1 };
+                strNums  = new[]{ 1 };
+                bossNum  = 1;               // スケ×2（チュートリアル）
+                break;
+            case 2:
+                weakNums = new[]{ 1 };
+                medNums  = new[]{ 1 };
+                strNums  = new[]{ 1 };
+                bossNum  = 8;               // スケ×3
+                break;
+            case 3:
+                weakNums = new[]{ 1 };
+                medNums  = new[]{ 1, 8 };
+                strNums  = new[]{ 8 };
+                bossNum  = 8;               // スケ×3
+                break;
+            case 4:
+                weakNums = new[]{ 1, 8 };
+                medNums  = new[]{ 8 };
+                strNums  = new[]{ 8 };
+                bossNum  = 9;               // シャドウ+スケ×2
+                break;
+
+            // === 階層5-7: 毒・射程が登場 ===
+            case 5:
+                weakNums = new[]{ 1, 8 };
+                medNums  = new[]{ 8, 9 };
+                strNums  = new[]{ 9 };
+                bossNum  = 2;               // ゾンビ+スケ×2
+                break;
+            case 6:
+                weakNums = new[]{ 8, 9 };
+                medNums  = new[]{ 9, 2 };
+                strNums  = new[]{ 2 };
+                bossNum  = 10;              // スケ×2+アーチャー
+                break;
+            case 7:
+                weakNums = new[]{ 9, 2 };
+                medNums  = new[]{ 2, 10 };
+                strNums  = new[]{ 10 };
+                bossNum  = 11;              // ゾンビ+スケ+アーチャー
+                break;
+
+            // === 階層8-10: 回復・タンク登場 ===
+            case 8:
+                weakNums = new[]{ 2, 10 };
+                medNums  = new[]{ 10, 11 };
+                strNums  = new[]{ 11 };
+                bossNum  = 12;              // アーチャー×2+僧侶
+                break;
+            case 9:
+                weakNums = new[]{ 10, 11 };
+                medNums  = new[]{ 11, 12 };
+                strNums  = new[]{ 12 };
+                bossNum  = 3;               // ガーディアン+アーチャー×2
+                break;
+            case 10:
+                weakNums = new[]{ 11, 12 };
+                medNums  = new[]{ 12, 3 };
+                strNums  = new[]{ 3 };
+                bossNum  = 4;               // ガーディアン+ゾンビ+僧侶+スケ
+                break;
+
+            // === 階層11+: フル編成 ===
+            default:
+                weakNums = new[]{ 12, 3 };
+                medNums  = new[]{ 3, 4 };
+                strNums  = new[]{ Mathf.Min(4 + (floor - 11), 7) };
+                bossNum  = Mathf.Min(5 + (floor - 11), 7);
+                break;
         }
 
-        // 中敵: Wave 3-5（中盤）
-        if (config.mediumEnemyWaves == null || config.mediumEnemyWaves.Length == 0)
-        {
-            var medium = new System.Collections.Generic.List<EnemyWaveSO>();
-            foreach (var w in waves) { if (w.waveNumber >= 3 && w.waveNumber <= 5) medium.Add(w); }
-            if (medium.Count > 0) config.mediumEnemyWaves = medium.ToArray();
-            Debug.Log($"[DungeonManager] mediumEnemyWaves を自動設定: {medium.Count}件");
-        }
+        config.weakEnemyWaves   = Resolve(waveMap, weakNums);
+        config.mediumEnemyWaves = Resolve(waveMap, medNums);
+        config.strongEnemyWaves = Resolve(waveMap, strNums);
 
-        // 強敵: Wave 6（終盤）
-        if (config.strongEnemyWaves == null || config.strongEnemyWaves.Length == 0)
-        {
-            var strong = new System.Collections.Generic.List<EnemyWaveSO>();
-            foreach (var w in waves) { if (w.waveNumber == 6) strong.Add(w); }
-            if (strong.Count > 0) config.strongEnemyWaves = strong.ToArray();
-            Debug.Log($"[DungeonManager] strongEnemyWaves を自動設定: {strong.Count}件");
-        }
+        config.bossWave = waveMap.TryGetValue(bossNum, out var bw) ? bw : config.strongEnemyWaves[0];
 
-        // ボス: Wave 7（最終）
-        if (config.bossWave == null)
-        {
-            foreach (var w in waves) { if (w.waveNumber == 7) { config.bossWave = w; break; } }
-            // 見つからなければ最後のWave
-            if (config.bossWave == null && waves.Length > 0)
-                config.bossWave = waves[waves.Length - 1];
-            Debug.Log($"[DungeonManager] bossWave を自動設定: {config.bossWave?.name}");
-        }
+        Debug.Log($"[DungeonManager] 階層{floor}: " +
+            $"Weak=[{Join(config.weakEnemyWaves)}], Med=[{Join(config.mediumEnemyWaves)}], " +
+            $"Str=[{Join(config.strongEnemyWaves)}], Boss={config.bossWave?.name}");
+    }
+
+    private static EnemyWaveSO[] Resolve(Dictionary<int, EnemyWaveSO> map, int[] nums)
+    {
+        var list = new List<EnemyWaveSO>();
+        foreach (var n in nums)
+            if (map.TryGetValue(n, out var w)) list.Add(w);
+        return list.Count > 0 ? list.ToArray() : null;
+    }
+
+    private static string Join(EnemyWaveSO[] waves)
+    {
+        if (waves == null) return "null";
+        var names = new List<string>();
+        foreach (var w in waves) names.Add(w.name);
+        return string.Join(",", names);
     }
 
     private string GetMaterialName(MaterialType type)
