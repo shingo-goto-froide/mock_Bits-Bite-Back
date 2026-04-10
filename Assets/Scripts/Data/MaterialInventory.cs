@@ -5,35 +5,37 @@ public class MaterialInventory
 {
     private Dictionary<MaterialType, int> materials = new Dictionary<MaterialType, int>();
     public int CatalystCount { get; private set; }
-    private Dictionary<MonsterRank, int> souls = new Dictionary<MonsterRank, int>();
+    private List<SoulData> souls = new List<SoulData>();
 
     public void AddCatalyst(int amount = 1) { CatalystCount += amount; }
     public bool UseCatalyst() { if (CatalystCount <= 0) return false; CatalystCount--; return true; }
 
     // === 魂管理 ===
-    public void AddSoul(MonsterRank rank, int amount = 1)
+    public void AddSoul(SoulData soul) { souls.Add(soul); }
+
+    public void AddSoul(MonsterRank rank)
     {
-        if (!souls.ContainsKey(rank)) souls[rank] = 0;
-        souls[rank] += amount;
+        souls.Add(SoulData.CreateRandom(rank));
     }
+
+    public List<SoulData> GetAllSouls() { return souls; }
 
     public int GetSoulCount(MonsterRank rank)
     {
-        return souls.TryGetValue(rank, out int count) ? count : 0;
+        int count = 0;
+        foreach (var s in souls) if (s.rank == rank) count++;
+        return count;
     }
 
-    public int GetTotalSoulCount()
-    {
-        int total = 0;
-        foreach (var kvp in souls) total += kvp.Value;
-        return total;
-    }
+    public int GetTotalSoulCount() { return souls.Count; }
 
-    public bool UseSoul(MonsterRank rank)
+    public bool RemoveSoul(int soulId)
     {
-        if (GetSoulCount(rank) <= 0) return false;
-        souls[rank]--;
-        return true;
+        for (int i = 0; i < souls.Count; i++)
+        {
+            if (souls[i].id == soulId) { souls.RemoveAt(i); return true; }
+        }
+        return false;
     }
 
     public int GetAmount(MaterialType type)

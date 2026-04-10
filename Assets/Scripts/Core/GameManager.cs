@@ -133,6 +133,11 @@ public class GameManager : MonoBehaviour
         Inventory.Add(MaterialType.AnimalSkull, 1);
         Inventory.Add(MaterialType.LongWood, 2);
 
+        // 初期魂を付与
+        Inventory.AddSoul(new SoulData(SoulType.Vigor, MonsterRank.D));
+        Inventory.AddSoul(new SoulData(SoulType.Fury, MonsterRank.D));
+        Inventory.AddSoul(new SoulData(SoulType.Swiftness, MonsterRank.C));
+
         // チュートリアル用魔物を付与
         if (tutorialMonsterData != null)
         {
@@ -391,5 +396,34 @@ public class GameManager : MonoBehaviour
     public void DebugSetWave(int wave)
     {
         CurrentWave = Mathf.Clamp(wave, 0, enemyWaves.Length - 1);
+    }
+
+    public void DebugSetFloor(int floor)
+    {
+        CurrentFloor = Mathf.Max(1, floor);
+    }
+
+    public void DebugMaxCatalysts()
+    {
+        int toAdd = 99 - Inventory.CatalystCount;
+        if (toAdd > 0) Inventory.AddCatalyst(toAdd);
+    }
+
+    public void DebugMaxAll()
+    {
+        DebugMaxMaterials();
+        DebugMaxCatalysts();
+        DebugAddAllSouls();
+        DebugAddAllMonsters();
+        DebugHealAll();
+    }
+
+    public void DebugAddAllSouls()
+    {
+        var types = System.Enum.GetValues(typeof(SoulType));
+        var ranks = new[] { MonsterRank.S, MonsterRank.A, MonsterRank.B, MonsterRank.C, MonsterRank.D };
+        foreach (SoulType type in types)
+            foreach (var rank in ranks)
+                Inventory.AddSoul(new SoulData(type, rank));
     }
 }

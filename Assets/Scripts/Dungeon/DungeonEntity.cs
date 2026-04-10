@@ -40,7 +40,7 @@ public class DungeonEntity : MonoBehaviour
                 SetupTextLabel("宝", new Color(1f, 0.85f, 0.2f), tileSize);
                 break;
             case DungeonEntityType.Event:
-                SetupTextLabel("回", new Color(0.2f, 0.9f, 0.4f), tileSize);
+                SetupTextLabel("?", new Color(0.8f, 0.7f, 0.2f), tileSize);
                 break;
         }
 

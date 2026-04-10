@@ -315,12 +315,23 @@ public class DungeonManager : MonoBehaviour
         Debug.Log($"[DungeonManager] {msg}");
     }
 
-    /// <summary>イベントマス → 回復イベント</summary>
+    /// <summary>イベントマス → 回復 or 敵出現</summary>
     private void OnEventTriggered(EntityPlacement eventEntity)
     {
         var gm = GameManager.Instance;
         if (gm == null) return;
 
+        Map.RemoveEntity(eventEntity);
+        RemoveEntityGameObject(eventEntity);
+
+        // 確率で敵出現
+        if (UnityEngine.Random.value < config.eventEnemyChance)
+        {
+            OnEventEnemyEncounter(eventEntity);
+            return;
+        }
+
+        // 回復イベント
         var formation = gm.Formation.GetFormation();
         int totalHealed = 0;
 
@@ -333,14 +344,42 @@ public class DungeonManager : MonoBehaviour
             totalHealed += monster.currentHp - before;
         }
 
-        Map.RemoveEntity(eventEntity);
-        RemoveEntityGameObject(eventEntity);
-
         string msg = $"回復の泉を発見！ 味方全体のHPが回復した！（合計{totalHealed}回復）";
         OnMessage?.Invoke(msg);
         OnStatusChanged?.Invoke();
-
         Debug.Log($"[DungeonManager] {msg}");
+    }
+
+    /// <summary>イベントマスからの敵出現</summary>
+    private void OnEventEnemyEncounter(EntityPlacement eventEntity)
+    {
+        if (isTransitioning) return;
+
+        IsPlayerTurn = false;
+        isTransitioning = true;
+
+        // Weak〜Medium のランダム
+        var rank = UnityEngine.Random.value < 0.6f ? EnemyRank.Weak : EnemyRank.Medium;
+        var wave = GetEnemyWaveForRank(rank);
+        if (wave == null)
+        {
+            OnMessage?.Invoke("何かの気配がしたが、何もいなかった...");
+            IsPlayerTurn = true;
+            isTransitioning = false;
+            return;
+        }
+
+        OnMessage?.Invoke("不意打ち！ 敵が現れた！");
+        SaveDungeonState();
+
+        Debug.Log($"[DungeonManager] イベント敵遭遇！ Rank={rank}, Wave={wave.name}");
+
+        var gm = GameManager.Instance;
+        if (gm != null)
+        {
+            gm.SetDungeonBattle(wave, false);
+            StartCoroutine(TransitionToBattle());
+        }
     }
 
     /// <summary>ボス部屋に入る → 確認後バトルへ遷移</summary>

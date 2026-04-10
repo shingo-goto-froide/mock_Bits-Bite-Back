@@ -12,6 +12,7 @@ public class MonsterInstance
     public int instanceId;
     public MonsterRank rank;
     public int age; // 年数（ダンジョン内の歩数で加算）
+    public SoulData equippedSoul; // 装備中の魂（null=なし）
 
     private static int nextId;
 
@@ -129,6 +130,50 @@ public class MonsterInstance
         return $"{rank}ランクの魂";
     }
 
+    // === 魂装備 ===
+
+    public void EquipSoul(SoulData soul) { equippedSoul = soul; }
+    public void UnequipSoul() { equippedSoul = null; }
+    public bool HasSoulEquipped() { return equippedSoul != null; }
+
+    /// <summary>装備込みのステータスを返す</summary>
+    public (int hp, int atk, int spd, int range) GetEffectiveStats()
+    {
+        int hp = maxHp, atk = currentAttack, spd = currentSpeed, rng = currentRange;
+        if (equippedSoul != null) ApplySoulBonus(equippedSoul, ref hp, ref atk, ref spd, ref rng);
+        return (hp, atk, spd, rng);
+    }
+
+    /// <summary>指定の魂を装備した場合のステータスをプレビュー</summary>
+    public (int hp, int atk, int spd, int range) PreviewSoul(SoulData soul)
+    {
+        int hp = maxHp, atk = currentAttack, spd = currentSpeed, rng = currentRange;
+        ApplySoulBonus(soul, ref hp, ref atk, ref spd, ref rng);
+        return (hp, atk, spd, rng);
+    }
+
+    private static void ApplySoulBonus(SoulData soul, ref int hp, ref int atk, ref int spd, ref int rng)
+    {
+        int v = soul.GetEffectValue();
+        switch (soul.type)
+        {
+            case SoulType.Vigor: hp += v; break;
+            case SoulType.Fury: atk += v; break;
+            case SoulType.Swiftness: spd += v; break;
+            case SoulType.Fortitude: hp += v / 2; atk += v / 2; break;
+            case SoulType.Precision: rng += (soul.rank >= MonsterRank.B ? 2 : 1); break;
+        }
+    }
+
+    /// <summary>装備込みの最大HP</summary>
+    public int EffectiveMaxHp { get { var s = GetEffectiveStats(); return s.hp; } }
+    /// <summary>装備込みの攻撃力</summary>
+    public int EffectiveAttack { get { var s = GetEffectiveStats(); return s.atk; } }
+    /// <summary>装備込みの速度</summary>
+    public int EffectiveSpeed { get { var s = GetEffectiveStats(); return s.spd; } }
+    /// <summary>装備込みの射程</summary>
+    public int EffectiveRange { get { var s = GetEffectiveStats(); return s.range; } }
+
     public bool TakeDamage(int amount)
     {
         currentHp = Mathf.Max(0, currentHp - amount);
@@ -149,5 +194,32 @@ public class MonsterInstance
     {
         ApplyBaseStats();
         ApplyRankMultiplier();
+        ApplyEquippedSoulToStats();
+    }
+
+    /// <summary>装備中の魂ボーナスをベースステータスに加算（バトル用）</summary>
+    private void ApplyEquippedSoulToStats()
+    {
+        if (equippedSoul == null) return;
+        int v = equippedSoul.GetEffectValue();
+        switch (equippedSoul.type)
+        {
+            case SoulType.Vigor:
+                maxHp += v; currentHp = maxHp;
+                break;
+            case SoulType.Fury:
+                currentAttack += v;
+                break;
+            case SoulType.Swiftness:
+                currentSpeed += v;
+                break;
+            case SoulType.Fortitude:
+                maxHp += v / 2; currentHp = maxHp;
+                currentAttack += v / 2;
+                break;
+            case SoulType.Precision:
+                currentRange += (equippedSoul.rank >= MonsterRank.B ? 2 : 1);
+                break;
+        }
     }
 }

@@ -152,117 +152,6 @@ public class PrepareUI : MonoBehaviour
 
     private GameObject debugPanel;
 
-    private void ShowFloorRewardPanel()
-    {
-        var canvas = FindDeep(transform.root, "PrepareCanvas") ?? transform;
-
-        // 背景オーバーレイ
-        var overlay = new GameObject("RewardOverlay");
-        overlay.transform.SetParent(canvas, false);
-        var overlayRt = overlay.AddComponent<RectTransform>();
-        overlayRt.anchorMin = Vector2.zero;
-        overlayRt.anchorMax = Vector2.one;
-        overlayRt.offsetMin = Vector2.zero;
-        overlayRt.offsetMax = Vector2.zero;
-        overlay.AddComponent<Image>().color = new Color(0, 0, 0, 0.7f);
-
-        // パネル
-        var panel = new GameObject("RewardPanel");
-        panel.transform.SetParent(overlay.transform, false);
-        var panelRt = panel.AddComponent<RectTransform>();
-        panelRt.anchorMin = new Vector2(0.15f, 0.2f);
-        panelRt.anchorMax = new Vector2(0.85f, 0.8f);
-        panelRt.offsetMin = Vector2.zero;
-        panelRt.offsetMax = Vector2.zero;
-        panel.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.22f, 0.95f);
-
-        var vlg = panel.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 15;
-        vlg.padding = new RectOffset(30, 30, 30, 30);
-        vlg.childControlWidth = true;
-        vlg.childControlHeight = true;
-        vlg.childForceExpandWidth = true;
-        vlg.childForceExpandHeight = false;
-
-        // タイトル
-        var titleGo = new GameObject("Title");
-        titleGo.transform.SetParent(panel.transform, false);
-        titleGo.AddComponent<RectTransform>();
-        titleGo.AddComponent<LayoutElement>().preferredHeight = 50;
-        var titleTmp = titleGo.AddComponent<TextMeshProUGUI>();
-        titleTmp.text = $"階層 {gm.CurrentFloor - 1} クリア！ 報酬を選んでください";
-        titleTmp.fontSize = 24;
-        titleTmp.fontStyle = FontStyles.Bold;
-        titleTmp.color = new Color(1f, 0.9f, 0.5f);
-        titleTmp.alignment = TextAlignmentOptions.Center;
-
-        // 選択肢ボタン
-        CreateRewardButton(panel.transform, "全回復",
-            "味方全員のHPを全回復する",
-            new Color(0.2f, 0.7f, 0.3f), () => {
-                gm.ClaimRewardHeal();
-                Destroy(overlay);
-                RefreshAll();
-            });
-
-        CreateRewardButton(panel.transform, $"素材 ×{3 + gm.CurrentFloor}",
-            "ランダムな素材を獲得する",
-            new Color(0.8f, 0.6f, 0.2f), () => {
-                gm.ClaimRewardMaterials();
-                Destroy(overlay);
-                RefreshAll();
-            });
-
-        CreateRewardButton(panel.transform, $"HP50%回復 + 素材 ×{1 + gm.CurrentFloor / 2}",
-            "HPを半分回復し、少量の素材を獲得する",
-            new Color(0.3f, 0.5f, 0.8f), () => {
-                gm.ClaimRewardBalanced();
-                Destroy(overlay);
-                RefreshAll();
-            });
-    }
-
-    private void CreateRewardButton(Transform parent, string title, string desc, Color color, UnityEngine.Events.UnityAction onClick)
-    {
-        var go = new GameObject("RewardBtn");
-        go.transform.SetParent(parent, false);
-        go.AddComponent<RectTransform>();
-        go.AddComponent<LayoutElement>().preferredHeight = 80;
-        go.AddComponent<Image>().color = color;
-
-        var btn = go.AddComponent<Button>();
-        btn.onClick.AddListener(onClick);
-
-        var btnVlg = go.AddComponent<VerticalLayoutGroup>();
-        btnVlg.spacing = 2;
-        btnVlg.padding = new RectOffset(15, 15, 10, 10);
-        btnVlg.childControlWidth = true;
-        btnVlg.childControlHeight = true;
-        btnVlg.childForceExpandWidth = true;
-        btnVlg.childForceExpandHeight = false;
-
-        var tGo = new GameObject("Title");
-        tGo.transform.SetParent(go.transform, false);
-        tGo.AddComponent<RectTransform>();
-        tGo.AddComponent<LayoutElement>().preferredHeight = 35;
-        var tTmp = tGo.AddComponent<TextMeshProUGUI>();
-        tTmp.text = title;
-        tTmp.fontSize = 22;
-        tTmp.fontStyle = FontStyles.Bold;
-        tTmp.color = Color.white;
-        tTmp.alignment = TextAlignmentOptions.Center;
-
-        var dGo = new GameObject("Desc");
-        dGo.transform.SetParent(go.transform, false);
-        dGo.AddComponent<RectTransform>();
-        dGo.AddComponent<LayoutElement>().preferredHeight = 25;
-        var dTmp = dGo.AddComponent<TextMeshProUGUI>();
-        dTmp.text = desc;
-        dTmp.fontSize = 14;
-        dTmp.color = new Color(1f, 1f, 1f, 0.8f);
-        dTmp.alignment = TextAlignmentOptions.Center;
-    }
-
     private void BuildDebugPanel()
     {
         var canvas = FindDeep(transform.root, "PrepareCanvas") ?? transform;
@@ -296,7 +185,7 @@ public class PrepareUI : MonoBehaviour
         prt.anchorMax = new Vector2(1, 1);
         prt.pivot = new Vector2(1, 1);
         prt.anchoredPosition = new Vector2(-10, -52);
-        prt.sizeDelta = new Vector2(320, 200);
+        prt.sizeDelta = new Vector2(320, 280);
         debugPanel.AddComponent<Image>().color = new Color(0.1f, 0.1f, 0.15f, 0.95f);
         debugPanel.AddComponent<Outline>().effectColor = new Color(0.8f, 0.2f, 0.2f, 0.6f);
 
@@ -316,31 +205,41 @@ public class PrepareUI : MonoBehaviour
         CreateDebugButton(row2.transform, "全回復", () => { gm.DebugHealAll(); RefreshAll(); });
         CreateDebugButton(row2.transform, "魔物クリア", () => { gm.DebugClearMonsters(); RefreshAll(); });
 
-        // 行3: Wave操作
+        // 行3: 触媒MAX, 全魂入手
         var row3 = CreateDebugRow(debugPanel.transform);
-        CreateDebugButton(row3.transform, "Wave ▼", () => { gm.DebugSetWave(gm.CurrentWave - 1); RefreshDebugWaveText(); });
-        CreateDebugButton(row3.transform, "Wave ▲", () => { gm.DebugSetWave(gm.CurrentWave + 1); RefreshDebugWaveText(); });
+        CreateDebugButton(row3.transform, "触媒MAX", () => { gm.DebugMaxCatalysts(); RefreshAll(); });
+        CreateDebugButton(row3.transform, "全魂入手", () => { gm.DebugAddAllSouls(); RefreshAll(); });
 
-        // Wave表示
-        var waveGo = new GameObject("WaveInfo");
-        waveGo.transform.SetParent(debugPanel.transform, false);
-        waveGo.AddComponent<RectTransform>();
-        waveGo.AddComponent<LayoutElement>().preferredHeight = 28;
-        debugWaveText = waveGo.AddComponent<TextMeshProUGUI>();
-        debugWaveText.fontSize = 16; debugWaveText.color = Color.white;
-        debugWaveText.alignment = TextAlignmentOptions.Center;
-        RefreshDebugWaveText();
+        // 行3.5: 全要素MAX
+        var row35 = CreateDebugRow(debugPanel.transform);
+        CreateDebugButton(row35.transform, "全要素MAX", () => { gm.DebugMaxAll(); RefreshAll(); });
+        CreateDebugButton(row35.transform, "---", null);
+
+        // 行4: 階層操作
+        var row4 = CreateDebugRow(debugPanel.transform);
+        CreateDebugButton(row4.transform, "階層 -", () => { gm.DebugSetFloor(gm.CurrentFloor - 1); RefreshDebugFloorText(); RefreshHeader(); });
+        CreateDebugButton(row4.transform, "階層 +", () => { gm.DebugSetFloor(gm.CurrentFloor + 1); RefreshDebugFloorText(); RefreshHeader(); });
+
+        // 階層表示
+        var floorGo = new GameObject("FloorInfo");
+        floorGo.transform.SetParent(debugPanel.transform, false);
+        floorGo.AddComponent<RectTransform>();
+        floorGo.AddComponent<LayoutElement>().preferredHeight = 28;
+        debugFloorText = floorGo.AddComponent<TextMeshProUGUI>();
+        debugFloorText.fontSize = 16; debugFloorText.color = Color.white;
+        debugFloorText.alignment = TextAlignmentOptions.Center;
+        RefreshDebugFloorText();
 
         debugPanel.SetActive(false);
         btnComp.onClick.AddListener(() => debugPanel.SetActive(!debugPanel.activeSelf));
     }
 
-    private TMP_Text debugWaveText;
+    private TMP_Text debugFloorText;
 
-    private void RefreshDebugWaveText()
+    private void RefreshDebugFloorText()
     {
-        if (debugWaveText != null)
-            debugWaveText.text = $"現在: Wave {gm.CurrentWave + 1} / {gm.EnemyWaves.Length}";
+        if (debugFloorText != null)
+            debugFloorText.text = $"現在: 階層 {gm.CurrentFloor}";
         // WaveBarも更新
         var waveText = FindDeep(transform, "WaveText")?.GetComponent<TMP_Text>();
         if (waveText != null)
@@ -368,7 +267,8 @@ public class PrepareUI : MonoBehaviour
         var img = go.AddComponent<Image>();
         img.color = new Color(0.25f, 0.25f, 0.35f);
         var btn = go.AddComponent<Button>();
-        btn.onClick.AddListener(action);
+        if (action != null) btn.onClick.AddListener(action);
+        else btn.interactable = false;
 
         var txt = new GameObject("Text");
         txt.transform.SetParent(go.transform, false);
@@ -691,16 +591,61 @@ public class PrepareUI : MonoBehaviour
             var rankLabel = monster.GetRankLabel();
             var rankColor = monster.GetRankColor();
             AddTmpLE(info.transform, "NameText", $"{d.monsterName} <color=#{ColorUtility.ToHtmlStringRGB(rankColor)}>[{rankLabel}]</color>", 24, FontStyles.Bold, Color.white, 28, TextAlignmentOptions.Center);
+
+            // 装備込みのステータス表示
+            var eff = monster.GetEffectiveStats();
             AddTmpLE(info.transform, "StatsText",
-                $"HP:{monster.currentHp}/{monster.maxHp}  ATK:{monster.currentAttack}  SPD:{d.speed}  射程:{d.range}  枠:{d.slotSize}  {monster.age}年",
+                $"HP:{monster.currentHp}/{eff.hp}  ATK:{eff.atk}  SPD:{eff.spd}  射程:{eff.range}  枠:{d.slotSize}  {monster.age}年",
                 18, FontStyles.Normal, new Color(0.8f, 0.8f, 0.9f), 22, TextAlignmentOptions.Center);
             AddTmpLE(info.transform, "AbilityText", d.abilityDescription,
                 16, FontStyles.Italic, new Color(0.65f, 0.75f, 0.9f), 20, TextAlignmentOptions.Center);
+
+            // 装備中の魂を表示
+            if (monster.HasSoulEquipped())
+            {
+                var soul = monster.equippedSoul;
+                var tc = soul.GetTypeColor();
+                var src = MonsterInstance.GetRankColor(soul.rank);
+                AddTmpLE(info.transform, "SoulText",
+                    $"魂: <color=#{ColorUtility.ToHtmlStringRGB(tc)}>{soul.GetName()}</color> <color=#{ColorUtility.ToHtmlStringRGB(src)}>[{soul.rank}]</color> ({soul.GetEffectDescription()})",
+                    15, FontStyles.Normal, new Color(0.85f, 0.75f, 1f), 20, TextAlignmentOptions.Center);
+            }
 
             if (inFormation)
             {
                 AddTmpLE(info.transform, "StatusText", "[ 編成中 ]",
                     16, FontStyles.Bold, new Color(0.4f, 0.7f, 1f), 22, TextAlignmentOptions.Center);
+            }
+
+            // 魂装備ボタン（カード下部にアンカー配置、VLG外）
+            {
+                float btnH = 28f;
+                float btnW = 120f;
+                float btnY = 14f;
+                // info領域の中央（画像の右端〜カード右端の中間）を基準に
+                float infoLeft = ImgMargin + ImgSize + ImgMargin;
+                bool hasAvailable = GetAvailableSouls().Count > 0;
+                bool hasEquipped = monster.HasSoulEquipped();
+                float totalW = 0;
+                if (hasAvailable) totalW += btnW;
+                if (hasEquipped) { if (totalW > 0) totalW += 6; totalW += btnW; }
+                // anchor(0.5,0)基準なので、info中央へのオフセットを計算
+                float infoCenterOffset = infoLeft * 0.5f;
+                float startX = infoCenterOffset - totalW * 0.5f;
+
+                if (hasAvailable)
+                {
+                    var capturedForEquip = monster;
+                    PlaceAnchorButton(go.transform, "魂装備", new Color(0.4f, 0.3f, 0.55f, 0.9f),
+                        startX, btnY, btnW, btnH, () => ShowSoulSelectDialog(capturedForEquip));
+                    startX += btnW + 6;
+                }
+                if (hasEquipped)
+                {
+                    var capturedForUnequip = monster;
+                    PlaceAnchorButton(go.transform, "魂を外す", new Color(0.45f, 0.35f, 0.35f, 0.9f),
+                        startX, btnY, btnW, btnH, () => { capturedForUnequip.UnequipSoul(); RefreshMonsterList(); RefreshFormation(); RefreshHeader(); });
+                }
             }
 
             var capturedMonster = monster;
@@ -844,6 +789,192 @@ public class PrepareUI : MonoBehaviour
 
         if (disassembleListContent.childCount == 0)
             CreateEmptyRow(disassembleListContent, "分解できる魔物がありません");
+    }
+
+    // === 所持魂タブ ===
+
+    private void BuildSoulTab()
+    {
+        // DisassembleTabContent と同じ親にコンテンツを動的生成
+        var parent = disassembleTabContent != null ? disassembleTabContent.transform.parent : transform;
+
+        // タブコンテンツ
+        soulTabContent = new GameObject("SoulTabContent");
+        soulTabContent.transform.SetParent(parent, false);
+        var rt = soulTabContent.AddComponent<RectTransform>();
+        // DisassembleTabContent と同じサイズにする
+        if (disassembleTabContent != null)
+        {
+            var srcRt = disassembleTabContent.GetComponent<RectTransform>();
+            rt.anchorMin = srcRt.anchorMin;
+            rt.anchorMax = srcRt.anchorMax;
+            rt.offsetMin = srcRt.offsetMin;
+            rt.offsetMax = srcRt.offsetMax;
+            rt.pivot = srcRt.pivot;
+        }
+        else
+        {
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        }
+
+        // ScrollView
+        var svGo = new GameObject("SoulScrollView");
+        svGo.transform.SetParent(soulTabContent.transform, false);
+        var svRt = svGo.AddComponent<RectTransform>();
+        svRt.anchorMin = Vector2.zero; svRt.anchorMax = Vector2.one;
+        svRt.offsetMin = Vector2.zero; svRt.offsetMax = Vector2.zero;
+        var sv = svGo.AddComponent<ScrollRect>();
+        svGo.AddComponent<Image>().color = new Color(0, 0, 0, 0.01f); // マスク用
+        svGo.AddComponent<Mask>().showMaskGraphic = false;
+
+        // Viewport
+        var vpGo = new GameObject("Viewport");
+        vpGo.transform.SetParent(svGo.transform, false);
+        var vpRt = vpGo.AddComponent<RectTransform>();
+        vpRt.anchorMin = Vector2.zero; vpRt.anchorMax = Vector2.one;
+        vpRt.offsetMin = Vector2.zero; vpRt.offsetMax = Vector2.zero;
+        vpGo.AddComponent<Image>().color = new Color(0, 0, 0, 0.01f);
+        vpGo.AddComponent<Mask>().showMaskGraphic = false;
+
+        // Content (GridLayoutGroup)
+        var contentGo = new GameObject("Content");
+        contentGo.transform.SetParent(vpGo.transform, false);
+        var cRt = contentGo.AddComponent<RectTransform>();
+        cRt.anchorMin = new Vector2(0, 1); cRt.anchorMax = new Vector2(1, 1);
+        cRt.pivot = new Vector2(0.5f, 1);
+        cRt.offsetMin = new Vector2(0, 0); cRt.offsetMax = new Vector2(0, 0);
+        var glg = contentGo.AddComponent<GridLayoutGroup>();
+        glg.cellSize = new Vector2(500, 100);
+        glg.spacing = new Vector2(12, 8);
+        glg.padding = new RectOffset(10, 10, 10, 10);
+        glg.startAxis = GridLayoutGroup.Axis.Horizontal;
+        glg.constraint = GridLayoutGroup.Constraint.Flexible;
+        glg.childAlignment = TextAnchor.UpperCenter;
+        var csf = contentGo.AddComponent<ContentSizeFitter>();
+        csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        sv.content = cRt;
+        sv.viewport = vpRt;
+        sv.horizontal = false;
+        sv.vertical = true;
+
+        soulListContent = contentGo.transform;
+        soulTabContent.SetActive(false);
+
+        // タブボタンを分解タブボタンの隣に動的追加
+        if (disassembleTabButton != null)
+        {
+            var tabParent = disassembleTabButton.transform.parent;
+            var srcBtnRt = disassembleTabButton.GetComponent<RectTransform>();
+
+            var btnGo = new GameObject("SoulTabButton");
+            btnGo.transform.SetParent(tabParent, false);
+            var btnRt = btnGo.AddComponent<RectTransform>();
+            // 分解ボタンの右隣に配置
+            btnRt.anchorMin = srcBtnRt.anchorMin;
+            btnRt.anchorMax = srcBtnRt.anchorMax;
+            btnRt.sizeDelta = srcBtnRt.sizeDelta;
+            btnRt.pivot = srcBtnRt.pivot;
+            btnRt.anchoredPosition = srcBtnRt.anchoredPosition + new Vector2(srcBtnRt.sizeDelta.x + 8, 0);
+
+            soulTabImage = btnGo.AddComponent<Image>();
+            soulTabImage.color = TabInactiveColor;
+            soulTabButton = btnGo.AddComponent<Button>();
+            soulTabButton.onClick.AddListener(() => SwitchTab(PrepareTab.Soul));
+
+            var txtGo = new GameObject("Text");
+            txtGo.transform.SetParent(btnGo.transform, false);
+            var tRt = txtGo.AddComponent<RectTransform>();
+            tRt.anchorMin = Vector2.zero; tRt.anchorMax = Vector2.one;
+            tRt.offsetMin = Vector2.zero; tRt.offsetMax = Vector2.zero;
+            var tmp = txtGo.AddComponent<TextMeshProUGUI>();
+            tmp.text = "所持魂";
+            tmp.fontSize = 20;
+            tmp.color = Color.white;
+            tmp.alignment = TextAlignmentOptions.Center;
+        }
+    }
+
+    private void RefreshSoulList()
+    {
+        if (soulListContent == null) return;
+        foreach (Transform child in soulListContent)
+            Destroy(child.gameObject);
+
+        var allSouls = gm.Inventory.GetAllSouls();
+        if (allSouls.Count == 0)
+        {
+            CreateEmptyRow(soulListContent, "魂を所持していません");
+            return;
+        }
+
+        // ランク高い順 → 種類順でソート
+        var sorted = new System.Collections.Generic.List<SoulData>(allSouls);
+        sorted.Sort((a, b) =>
+        {
+            int rc = b.rank.CompareTo(a.rank);
+            if (rc != 0) return rc;
+            return a.type.CompareTo(b.type);
+        });
+
+        foreach (var soul in sorted)
+            CreateSoulCard(soulListContent, soul);
+    }
+
+    private void CreateSoulCard(Transform parent, SoulData soul)
+    {
+        var go = new GameObject($"SoulCard_{soul.type}_{soul.rank}");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<RectTransform>();
+
+        var rankColor = MonsterInstance.GetRankColor(soul.rank);
+        var typeColor = soul.GetTypeColor();
+        go.AddComponent<Image>().color = new Color(0.14f, 0.14f, 0.22f, 0.95f);
+        go.AddComponent<Outline>().effectColor = new Color(typeColor.r * 0.5f, typeColor.g * 0.5f, typeColor.b * 0.5f, 0.8f);
+
+        // 左: 魂アイコン（種類色のオーブ）
+        var iconGo = new GameObject("SoulIcon");
+        iconGo.transform.SetParent(go.transform, false);
+        var iconRt = iconGo.AddComponent<RectTransform>();
+        iconRt.anchorMin = new Vector2(0, 0.5f);
+        iconRt.anchorMax = new Vector2(0, 0.5f);
+        iconRt.pivot = new Vector2(0.5f, 0.5f);
+        iconRt.anchoredPosition = new Vector2(50, 0);
+        iconRt.sizeDelta = new Vector2(70, 70);
+        iconGo.AddComponent<Image>().color = new Color(0.1f, 0.1f, 0.18f);
+
+        // オーブ（種類の色）
+        var orbGo = new GameObject("Orb");
+        orbGo.transform.SetParent(iconGo.transform, false);
+        var orbRt = orbGo.AddComponent<RectTransform>();
+        orbRt.anchorMin = new Vector2(0.15f, 0.15f); orbRt.anchorMax = new Vector2(0.85f, 0.85f);
+        orbRt.offsetMin = Vector2.zero; orbRt.offsetMax = Vector2.zero;
+        orbGo.AddComponent<Image>().color = typeColor;
+
+        // 右: テキスト情報
+        var info = new GameObject("Info");
+        info.transform.SetParent(go.transform, false);
+        var infoRt = info.AddComponent<RectTransform>();
+        infoRt.anchorMin = Vector2.zero; infoRt.anchorMax = Vector2.one;
+        infoRt.offsetMin = new Vector2(100, 6);
+        infoRt.offsetMax = new Vector2(-8, -6);
+        var vlg = info.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 2; vlg.childControlWidth = true; vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
+        vlg.childAlignment = TextAnchor.MiddleLeft;
+
+        // 魂名 + ランク
+        string rankHex = ColorUtility.ToHtmlStringRGB(rankColor);
+        AddTmpLE(info.transform, "NameText",
+            $"{soul.GetName()} <color=#{rankHex}>[{soul.rank}]</color>",
+            22, FontStyles.Bold, Color.white, 28, TextAlignmentOptions.Left);
+
+        // 効果
+        string typeHex = ColorUtility.ToHtmlStringRGB(typeColor);
+        AddTmpLE(info.transform, "EffectText",
+            $"<color=#{typeHex}>{soul.GetEffectDescription()}</color>",
+            17, FontStyles.Normal, new Color(0.8f, 0.85f, 0.9f), 22, TextAlignmentOptions.Left);
     }
 
     // === 行UI生成ヘルパー ===
@@ -1412,6 +1543,341 @@ public class PrepareUI : MonoBehaviour
         CreateSimpleButton(btnRow.transform, "キャンセル", new Color(0.35f, 0.35f, 0.4f), () => {
             Destroy(overlay);
         });
+    }
+
+    // === 魂付与フロー ===
+
+    private void PlaceAnchorButton(Transform parent, string text, Color color, float x, float y, float w, float h, UnityEngine.Events.UnityAction onClick)
+    {
+        var go = new GameObject("AncBtn");
+        go.transform.SetParent(parent, false);
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0); rt.anchorMax = new Vector2(0.5f, 0);
+        rt.pivot = new Vector2(0, 0);
+        rt.anchoredPosition = new Vector2(x, y);
+        rt.sizeDelta = new Vector2(w, h);
+        go.AddComponent<Image>().color = color;
+        go.AddComponent<Button>().onClick.AddListener(onClick);
+        var tGo = new GameObject("Text");
+        tGo.transform.SetParent(go.transform, false);
+        var tRt = tGo.AddComponent<RectTransform>();
+        tRt.anchorMin = Vector2.zero; tRt.anchorMax = Vector2.one;
+        tRt.offsetMin = Vector2.zero; tRt.offsetMax = Vector2.zero;
+        var tmp = tGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = text; tmp.fontSize = 16; tmp.fontStyle = FontStyles.Bold;
+        tmp.color = Color.white; tmp.alignment = TextAlignmentOptions.Center;
+    }
+
+    private void AddSmallButton(Transform parent, string text, Color color, UnityEngine.Events.UnityAction onClick)
+    {
+        var go = new GameObject("SmBtn");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<RectTransform>();
+        var le = go.AddComponent<LayoutElement>();
+        le.preferredWidth = 100; le.preferredHeight = 18; le.minHeight = 18; le.flexibleHeight = 0;
+        go.AddComponent<Image>().color = color;
+        go.AddComponent<Button>().onClick.AddListener(onClick);
+        var tGo = new GameObject("Text");
+        tGo.transform.SetParent(go.transform, false);
+        var tRt = tGo.AddComponent<RectTransform>();
+        tRt.anchorMin = Vector2.zero; tRt.anchorMax = Vector2.one;
+        tRt.offsetMin = Vector2.zero; tRt.offsetMax = Vector2.zero;
+        var tmp = tGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = text; tmp.fontSize = 11; tmp.fontStyle = FontStyles.Bold;
+        tmp.color = Color.white; tmp.alignment = TextAlignmentOptions.Center;
+    }
+
+    /// <summary>他の魔物に装備されていない魂のリストを返す</summary>
+    private System.Collections.Generic.List<SoulData> GetAvailableSouls()
+    {
+        var allSouls = gm.Inventory.GetAllSouls();
+        var equipped = new System.Collections.Generic.HashSet<int>();
+        foreach (var m in gm.OwnedMonsters)
+            if (m.equippedSoul != null) equipped.Add(m.equippedSoul.id);
+        var available = new System.Collections.Generic.List<SoulData>();
+        foreach (var s in allSouls)
+            if (!equipped.Contains(s.id)) available.Add(s);
+        return available;
+    }
+
+    private void ShowSoulSelectDialog(MonsterInstance monster)
+    {
+        var canvas = FindDeep(transform.root, "PrepareCanvas") ?? transform;
+        var overlay = new GameObject("SoulSelectOverlay");
+        overlay.transform.SetParent(canvas, false);
+        var oRt = overlay.AddComponent<RectTransform>();
+        oRt.anchorMin = Vector2.zero; oRt.anchorMax = Vector2.one;
+        oRt.offsetMin = Vector2.zero; oRt.offsetMax = Vector2.zero;
+        overlay.AddComponent<Image>().color = new Color(0, 0, 0, 0.6f);
+
+        var panel = new GameObject("Panel");
+        panel.transform.SetParent(overlay.transform, false);
+        var pRt = panel.AddComponent<RectTransform>();
+        pRt.anchorMin = new Vector2(0.1f, 0.1f);
+        pRt.anchorMax = new Vector2(0.9f, 0.9f);
+        pRt.offsetMin = Vector2.zero; pRt.offsetMax = Vector2.zero;
+        panel.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.2f, 0.95f);
+
+        var vlg = panel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 8; vlg.padding = new RectOffset(20, 20, 15, 15);
+        vlg.childControlWidth = true; vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
+        vlg.childAlignment = TextAnchor.UpperCenter;
+
+        // タイトル
+        var titleGo = new GameObject("Title");
+        titleGo.transform.SetParent(panel.transform, false);
+        titleGo.AddComponent<RectTransform>();
+        titleGo.AddComponent<LayoutElement>().preferredHeight = 40;
+        var titleTmp = titleGo.AddComponent<TextMeshProUGUI>();
+        var rc = monster.GetRankColor();
+        titleTmp.text = $"{monster.baseData.monsterName} <color=#{ColorUtility.ToHtmlStringRGB(rc)}>[{monster.GetRankLabel()}]</color> に装備する魂を選択";
+        titleTmp.fontSize = 24; titleTmp.fontStyle = FontStyles.Bold;
+        titleTmp.color = Color.white; titleTmp.alignment = TextAlignmentOptions.Center;
+        titleTmp.richText = true;
+
+        // スクロール可能な魂リスト
+        var svGo = new GameObject("ScrollView");
+        svGo.transform.SetParent(panel.transform, false);
+        svGo.AddComponent<RectTransform>();
+        svGo.AddComponent<LayoutElement>().flexibleHeight = 1;
+        var sv = svGo.AddComponent<ScrollRect>();
+        svGo.AddComponent<Image>().color = new Color(0, 0, 0, 0.01f);
+        svGo.AddComponent<Mask>().showMaskGraphic = false;
+
+        var vpGo = new GameObject("Viewport");
+        vpGo.transform.SetParent(svGo.transform, false);
+        var vpRt = vpGo.AddComponent<RectTransform>();
+        vpRt.anchorMin = Vector2.zero; vpRt.anchorMax = Vector2.one;
+        vpRt.offsetMin = Vector2.zero; vpRt.offsetMax = Vector2.zero;
+        vpGo.AddComponent<Image>().color = new Color(0, 0, 0, 0.01f);
+        vpGo.AddComponent<Mask>().showMaskGraphic = false;
+
+        var contentGo = new GameObject("Content");
+        contentGo.transform.SetParent(vpGo.transform, false);
+        var cRt = contentGo.AddComponent<RectTransform>();
+        cRt.anchorMin = new Vector2(0, 1); cRt.anchorMax = new Vector2(1, 1);
+        cRt.pivot = new Vector2(0.5f, 1);
+        var glg = contentGo.AddComponent<GridLayoutGroup>();
+        glg.cellSize = new Vector2(340, 65);
+        glg.spacing = new Vector2(8, 6);
+        glg.padding = new RectOffset(10, 10, 5, 5);
+        glg.startAxis = GridLayoutGroup.Axis.Horizontal;
+        glg.constraint = GridLayoutGroup.Constraint.Flexible;
+        glg.childAlignment = TextAnchor.UpperCenter;
+        var csf = contentGo.AddComponent<ContentSizeFitter>();
+        csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        sv.content = cRt;
+        sv.viewport = vpRt;
+        sv.horizontal = false; sv.vertical = true;
+
+        // 装備可能な魂のみ並べる
+        var sorted = new System.Collections.Generic.List<SoulData>(GetAvailableSouls());
+        sorted.Sort((a, b) =>
+        {
+            int rc2 = b.rank.CompareTo(a.rank);
+            if (rc2 != 0) return rc2;
+            return a.type.CompareTo(b.type);
+        });
+
+        foreach (var soul in sorted)
+        {
+            var card = new GameObject($"Soul_{soul.type}_{soul.rank}");
+            card.transform.SetParent(contentGo.transform, false);
+            card.AddComponent<RectTransform>();
+            var typeColor = soul.GetTypeColor();
+            card.AddComponent<Image>().color = new Color(0.16f, 0.16f, 0.24f, 0.95f);
+            card.AddComponent<Outline>().effectColor = new Color(typeColor.r * 0.4f, typeColor.g * 0.4f, typeColor.b * 0.4f, 0.8f);
+
+            // アイコン
+            var iconGo = new GameObject("Icon");
+            iconGo.transform.SetParent(card.transform, false);
+            var iRt = iconGo.AddComponent<RectTransform>();
+            iRt.anchorMin = new Vector2(0, 0.5f); iRt.anchorMax = new Vector2(0, 0.5f);
+            iRt.pivot = new Vector2(0.5f, 0.5f);
+            iRt.anchoredPosition = new Vector2(35, 0); iRt.sizeDelta = new Vector2(50, 50);
+            iconGo.AddComponent<Image>().color = new Color(0.1f, 0.1f, 0.18f);
+            var orb = new GameObject("Orb");
+            orb.transform.SetParent(iconGo.transform, false);
+            var oRt2 = orb.AddComponent<RectTransform>();
+            oRt2.anchorMin = new Vector2(0.15f, 0.15f); oRt2.anchorMax = new Vector2(0.85f, 0.85f);
+            oRt2.offsetMin = Vector2.zero; oRt2.offsetMax = Vector2.zero;
+            orb.AddComponent<Image>().color = typeColor;
+
+            // テキスト
+            var infoGo = new GameObject("Info");
+            infoGo.transform.SetParent(card.transform, false);
+            var infRt = infoGo.AddComponent<RectTransform>();
+            infRt.anchorMin = Vector2.zero; infRt.anchorMax = Vector2.one;
+            infRt.offsetMin = new Vector2(70, 4); infRt.offsetMax = new Vector2(-8, -4);
+            var ivlg = infoGo.AddComponent<VerticalLayoutGroup>();
+            ivlg.spacing = 1; ivlg.childControlWidth = true; ivlg.childControlHeight = true;
+            ivlg.childForceExpandWidth = true; ivlg.childForceExpandHeight = false;
+            ivlg.childAlignment = TextAnchor.MiddleLeft;
+
+            var rankColor = MonsterInstance.GetRankColor(soul.rank);
+            AddTmpLE(infoGo.transform, "Name",
+                $"{soul.GetName()} <color=#{ColorUtility.ToHtmlStringRGB(rankColor)}>[{soul.rank}]</color>",
+                20, FontStyles.Bold, Color.white, 24, TextAlignmentOptions.Left);
+            string tHex = ColorUtility.ToHtmlStringRGB(typeColor);
+            AddTmpLE(infoGo.transform, "Effect",
+                $"<color=#{tHex}>{soul.GetEffectDescription()}</color>",
+                15, FontStyles.Normal, new Color(0.8f, 0.85f, 0.9f), 20, TextAlignmentOptions.Left);
+
+            var capturedSoul = soul;
+            var btn = card.AddComponent<Button>();
+            btn.onClick.AddListener(() =>
+            {
+                Destroy(overlay);
+                ShowSoulConfirmDialog(monster, capturedSoul);
+            });
+        }
+
+        // キャンセルボタン
+        CreateSimpleButton(panel.transform, "キャンセル", new Color(0.35f, 0.35f, 0.4f), () => Destroy(overlay));
+    }
+
+    private void ShowSoulConfirmDialog(MonsterInstance monster, SoulData soul)
+    {
+        var canvas = FindDeep(transform.root, "PrepareCanvas") ?? transform;
+        var overlay = new GameObject("SoulConfirmOverlay");
+        overlay.transform.SetParent(canvas, false);
+        var oRt = overlay.AddComponent<RectTransform>();
+        oRt.anchorMin = Vector2.zero; oRt.anchorMax = Vector2.one;
+        oRt.offsetMin = Vector2.zero; oRt.offsetMax = Vector2.zero;
+        overlay.AddComponent<Image>().color = new Color(0, 0, 0, 0.6f);
+
+        var panel = new GameObject("Panel");
+        panel.transform.SetParent(overlay.transform, false);
+        var pRt = panel.AddComponent<RectTransform>();
+        pRt.anchorMin = new Vector2(0.18f, 0.25f);
+        pRt.anchorMax = new Vector2(0.82f, 0.75f);
+        pRt.offsetMin = Vector2.zero; pRt.offsetMax = Vector2.zero;
+        panel.AddComponent<Image>().color = new Color(0.12f, 0.14f, 0.2f, 0.95f);
+
+        var vlg = panel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 8; vlg.padding = new RectOffset(25, 25, 20, 70);
+        vlg.childControlWidth = true; vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
+        vlg.childAlignment = TextAnchor.UpperCenter;
+
+        // タイトル
+        AddCenterText(panel.transform, "魂を装備しますか？", 30, FontStyles.Bold, Color.white, 38);
+
+        // 魂情報
+        var typeColor = soul.GetTypeColor();
+        var rankColor = MonsterInstance.GetRankColor(soul.rank);
+        string soulName = $"{soul.GetName()} <color=#{ColorUtility.ToHtmlStringRGB(rankColor)}>[{soul.rank}]</color>";
+        AddCenterText(panel.transform, soulName, 24, FontStyles.Bold, Color.white, 30);
+        AddCenterText(panel.transform, $"<color=#{ColorUtility.ToHtmlStringRGB(typeColor)}>{soul.GetEffectDescription()}</color>",
+            20, FontStyles.Normal, new Color(0.8f, 0.85f, 0.9f), 26);
+
+        // 区切り線
+        var sep = new GameObject("Sep");
+        sep.transform.SetParent(panel.transform, false);
+        sep.AddComponent<RectTransform>();
+        sep.AddComponent<LayoutElement>().preferredHeight = 2;
+        sep.AddComponent<Image>().color = new Color(0.3f, 0.3f, 0.4f);
+
+        // ステータス変化プレビュー
+        var preview = monster.PreviewSoul(soul);
+        AddCenterText(panel.transform, $"{monster.baseData.monsterName} のステータス変化", 20, FontStyles.Bold, new Color(0.9f, 0.85f, 0.6f), 28);
+
+        string hpStr = FormatStatChange("HP", monster.maxHp, preview.hp);
+        string atkStr = FormatStatChange("ATK", monster.currentAttack, preview.atk);
+        string spdStr = FormatStatChange("SPD", monster.currentSpeed, preview.spd);
+        string rngStr = FormatStatChange("射程", monster.currentRange, preview.range);
+        AddCenterText(panel.transform, $"{hpStr}    {atkStr}", 20, FontStyles.Normal, Color.white, 26);
+        AddCenterText(panel.transform, $"{spdStr}    {rngStr}", 20, FontStyles.Normal, Color.white, 26);
+
+        // ボタン（overlay上にパネル下部基準で配置）
+        float dbW = 250f, dbH = 55f, dbGap = 30f;
+        var equipBtnGo = new GameObject("EquipBtn");
+        equipBtnGo.transform.SetParent(overlay.transform, false);
+        var eqRt = equipBtnGo.AddComponent<RectTransform>();
+        eqRt.anchorMin = new Vector2(0.5f, 0.25f); eqRt.anchorMax = new Vector2(0.5f, 0.25f);
+        eqRt.pivot = new Vector2(1, 0);
+        eqRt.anchoredPosition = new Vector2(-dbGap * 0.5f, 30);
+        eqRt.sizeDelta = new Vector2(dbW, dbH);
+        equipBtnGo.AddComponent<Image>().color = new Color(0.4f, 0.3f, 0.6f);
+        equipBtnGo.AddComponent<Button>().onClick.AddListener(() =>
+        {
+            monster.UnequipSoul();
+            monster.EquipSoul(soul);
+            Destroy(overlay);
+            RefreshMonsterList();
+            RefreshFormation();
+            RefreshHeader();
+            ShowMessage($"{monster.baseData.monsterName} に {soul.GetName()} を装備しました！");
+        });
+        AddAnchorBtnText(equipBtnGo.transform, "装備する");
+
+        var cancelBtnGo = new GameObject("CancelBtn");
+        cancelBtnGo.transform.SetParent(overlay.transform, false);
+        var ccRt = cancelBtnGo.AddComponent<RectTransform>();
+        ccRt.anchorMin = new Vector2(0.5f, 0.25f); ccRt.anchorMax = new Vector2(0.5f, 0.25f);
+        ccRt.pivot = new Vector2(0, 0);
+        ccRt.anchoredPosition = new Vector2(dbGap * 0.5f, 30);
+        ccRt.sizeDelta = new Vector2(dbW, dbH);
+        cancelBtnGo.AddComponent<Image>().color = new Color(0.35f, 0.35f, 0.4f);
+        cancelBtnGo.AddComponent<Button>().onClick.AddListener(() => Destroy(overlay));
+        AddAnchorBtnText(cancelBtnGo.transform, "キャンセル");
+    }
+
+    private void AddAnchorBtnText(Transform parent, string text)
+    {
+        var tGo = new GameObject("Text");
+        tGo.transform.SetParent(parent, false);
+        var tRt = tGo.AddComponent<RectTransform>();
+        tRt.anchorMin = Vector2.zero; tRt.anchorMax = Vector2.one;
+        tRt.offsetMin = Vector2.zero; tRt.offsetMax = Vector2.zero;
+        var tmp = tGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = text; tmp.fontSize = 28; tmp.fontStyle = FontStyles.Bold;
+        tmp.color = Color.white; tmp.alignment = TextAlignmentOptions.Center;
+    }
+
+    private void CreateDialogButton(Transform parent, string text, Color color, UnityEngine.Events.UnityAction onClick)
+    {
+        var go = new GameObject("DlgBtn");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<RectTransform>();
+        var le = go.AddComponent<LayoutElement>();
+        le.preferredHeight = 45; le.minHeight = 45;
+        go.AddComponent<Image>().color = color;
+        go.AddComponent<Button>().onClick.AddListener(onClick);
+        var tGo = new GameObject("Text");
+        tGo.transform.SetParent(go.transform, false);
+        var tRt = tGo.AddComponent<RectTransform>();
+        tRt.anchorMin = Vector2.zero; tRt.anchorMax = Vector2.one;
+        tRt.offsetMin = Vector2.zero; tRt.offsetMax = Vector2.zero;
+        var tmp = tGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = text; tmp.fontSize = 28; tmp.color = Color.white;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.alignment = TextAlignmentOptions.Center;
+    }
+
+    private string FormatStatChange(string label, int before, int after)
+    {
+        if (before == after) return $"{label}: {before}";
+        int diff = after - before;
+        string sign = diff > 0 ? "+" : "";
+        return $"{label}: {before} → <color=#66FF88>{after}</color> (<color=#66FF88>{sign}{diff}</color>)";
+    }
+
+    private void AddCenterText(Transform parent, string text, float fontSize, FontStyles style, Color color, float height)
+    {
+        var go = new GameObject("Text");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<RectTransform>();
+        go.AddComponent<LayoutElement>().preferredHeight = height;
+        var tmp = go.AddComponent<TextMeshProUGUI>();
+        tmp.text = text;
+        tmp.fontSize = fontSize;
+        tmp.fontStyle = style;
+        tmp.color = color;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.richText = true;
     }
 
     private void AddDialogText(Transform parent, string text, float fontSize, FontStyles style, Color color, float height)

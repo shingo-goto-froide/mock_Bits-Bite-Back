@@ -493,65 +493,47 @@ public class BattleUI : MonoBehaviour
         go.AddComponent<Image>().color = new Color(0.15f, 0.17f, 0.25f);
         go.AddComponent<Button>().onClick.AddListener(onClick);
 
-        var vlg = go.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 12;
-        vlg.padding = new RectOffset(10, 10, 10, 10);
-        vlg.childControlWidth = true;
-        vlg.childControlHeight = false;
-        vlg.childForceExpandWidth = true;
-        vlg.childForceExpandHeight = false;
-        vlg.childAlignment = TextAnchor.MiddleCenter;
-
-        // 上部スペーサー（中央寄せ用）
-        var spacerTop = new GameObject("SpacerTop");
-        spacerTop.transform.SetParent(go.transform, false);
-        spacerTop.AddComponent<RectTransform>();
-        spacerTop.AddComponent<LayoutElement>().flexibleHeight = 1;
-
-        // 正方形アイコン（色付き背景 + テキスト）
+        // アイコン（正方形、中央上寄せ）
         var iconGo = new GameObject("Icon");
         iconGo.transform.SetParent(go.transform, false);
-        iconGo.AddComponent<RectTransform>();
-        var iconLe = iconGo.AddComponent<LayoutElement>();
-        iconLe.preferredHeight = 400;
-        iconLe.minHeight = 400;
+        var iconRt = iconGo.AddComponent<RectTransform>();
+        iconRt.anchorMin = new Vector2(0.5f, 0.5f);
+        iconRt.anchorMax = new Vector2(0.5f, 0.5f);
+        iconRt.pivot = new Vector2(0.5f, 0);
+        iconRt.anchoredPosition = new Vector2(0, 5);
+        iconRt.sizeDelta = new Vector2(120, 120);
         iconGo.AddComponent<Image>().color = iconColor;
-        var arf = iconGo.AddComponent<AspectRatioFitter>();
-        arf.aspectMode = AspectRatioFitter.AspectMode.HeightControlsWidth;
-        arf.aspectRatio = 1f;
 
         var iconTextGo = new GameObject("IconText");
         iconTextGo.transform.SetParent(iconGo.transform, false);
         var itRt = iconTextGo.AddComponent<RectTransform>();
         itRt.anchorMin = Vector2.zero;
         itRt.anchorMax = Vector2.one;
-        itRt.offsetMin = new Vector2(8, 8);
-        itRt.offsetMax = new Vector2(-8, -8);
+        itRt.offsetMin = new Vector2(5, 5);
+        itRt.offsetMax = new Vector2(-5, -5);
         var itTmp = iconTextGo.AddComponent<TextMeshProUGUI>();
         itTmp.text = iconText;
-        itTmp.fontSize = 52;
+        itTmp.fontSize = 30;
         itTmp.fontStyle = FontStyles.Bold;
         itTmp.color = Color.white;
         itTmp.alignment = TextAlignmentOptions.Center;
-        itTmp.enableWordWrapping = true;
+        itTmp.enableWordWrapping = false;
 
-        // 説明テキスト
+        // 説明テキスト（アイコンの下、中央寄せ）
         var descGo = new GameObject("Desc");
         descGo.transform.SetParent(go.transform, false);
-        descGo.AddComponent<RectTransform>();
-        descGo.AddComponent<LayoutElement>().preferredHeight = 80;
+        var descRt = descGo.AddComponent<RectTransform>();
+        descRt.anchorMin = new Vector2(0.05f, 0.02f);
+        descRt.anchorMax = new Vector2(0.95f, 0.5f);
+        descRt.pivot = new Vector2(0.5f, 1);
+        descRt.anchoredPosition = new Vector2(0, -2);
+        descRt.offsetMin = new Vector2(5, 5); descRt.offsetMax = new Vector2(-5, 0);
         var descTmp = descGo.AddComponent<TextMeshProUGUI>();
         descTmp.text = desc;
-        descTmp.fontSize = 24;
+        descTmp.fontSize = 20;
         descTmp.color = new Color(0.85f, 0.85f, 0.9f);
         descTmp.alignment = TextAlignmentOptions.Center;
         descTmp.enableWordWrapping = true;
-
-        // 下部スペーサー（中央寄せ用）
-        var spacerBot = new GameObject("SpacerBot");
-        spacerBot.transform.SetParent(go.transform, false);
-        spacerBot.AddComponent<RectTransform>();
-        spacerBot.AddComponent<LayoutElement>().flexibleHeight = 1;
     }
 
     private void OnLog(string message)

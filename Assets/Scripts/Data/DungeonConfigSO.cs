@@ -18,8 +18,9 @@ public class DungeonConfigSO : ScriptableObject
     public int treasureCount = 3;
     public int eventCount = 2;
 
-    [Header("回復イベント")]
+    [Header("イベント")]
     [Range(0f, 1f)] public float healPercent = 0.3f;
+    [Range(0f, 1f)] public float eventEnemyChance = 0.3f; // イベントマスで敵が出る確率
 
     [Header("敵シンボル")]
     [Range(0f, 1f)] public float enemyMoveChance = 0.5f;

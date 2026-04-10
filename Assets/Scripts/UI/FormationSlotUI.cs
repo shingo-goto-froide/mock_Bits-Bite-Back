@@ -88,11 +88,20 @@ public class FormationSlotUI : MonoBehaviour
             var d = monster.baseData;
             var rc = monster.GetRankColor();
             AddText(info.transform, "Name", $"{d.monsterName} <color=#{ColorUtility.ToHtmlStringRGB(rc)}>[{monster.GetRankLabel()}]</color>", 16, FontStyles.Bold, Color.white);
+            var eff = monster.GetEffectiveStats();
             AddText(info.transform, "Stats",
-                $"HP:{monster.currentHp}/{monster.maxHp} ATK:{monster.currentAttack} {monster.age}年",
+                $"HP:{monster.currentHp}/{eff.hp} ATK:{eff.atk} {monster.age}年",
                 13, FontStyles.Normal, new Color(0.8f, 0.8f, 0.9f));
             AddText(info.transform, "Ability", d.abilityDescription,
                 11, FontStyles.Italic, new Color(0.65f, 0.75f, 0.9f));
+            if (monster.HasSoulEquipped())
+            {
+                var soul = monster.equippedSoul;
+                var tc = soul.GetTypeColor();
+                AddText(info.transform, "Soul",
+                    $"魂:{soul.GetName()}[{soul.rank}]",
+                    11, FontStyles.Normal, new Color(tc.r, tc.g, tc.b, 1f));
+            }
 
             if (slotImage != null)
                 slotImage.color = new Color(0.18f, 0.25f, 0.38f);
