@@ -348,7 +348,8 @@ public class DungeonUI : MonoBehaviour
     private void UpdateTurnText()
     {
         if (turnText == null) return;
-        int floor = GameManager.Instance != null ? GameManager.Instance.CurrentFloor : 1;
+        var gm = GameManager.Instance;
+        int floor = gm != null ? gm.CurrentFloor : 1;
         turnText.text = $"階層 {floor}  ターン {dungeonManager?.TurnCount ?? 0}";
     }
 

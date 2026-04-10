@@ -86,9 +86,10 @@ public class FormationSlotUI : MonoBehaviour
             vlg.childAlignment = TextAnchor.UpperCenter;
 
             var d = monster.baseData;
-            AddText(info.transform, "Name", d.monsterName, 16, FontStyles.Bold, Color.white);
+            var rc = monster.GetRankColor();
+            AddText(info.transform, "Name", $"{d.monsterName} <color=#{ColorUtility.ToHtmlStringRGB(rc)}>[{monster.GetRankLabel()}]</color>", 16, FontStyles.Bold, Color.white);
             AddText(info.transform, "Stats",
-                $"HP:{monster.currentHp}/{monster.maxHp} ATK:{monster.currentAttack}",
+                $"HP:{monster.currentHp}/{monster.maxHp} ATK:{monster.currentAttack} {monster.age}年",
                 13, FontStyles.Normal, new Color(0.8f, 0.8f, 0.9f));
             AddText(info.transform, "Ability", d.abilityDescription,
                 11, FontStyles.Italic, new Color(0.65f, 0.75f, 0.9f));

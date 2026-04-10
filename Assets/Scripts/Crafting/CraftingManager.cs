@@ -48,6 +48,17 @@ public class CraftingManager : MonoBehaviour
         {
             inventory.Add(kvp.Key, kvp.Value);
         }
+
+        // 魂を獲得（年数に応じたランク）
+        var soulRank = monster.GetSoulRank();
+        inventory.AddSoul(soulRank);
+        Debug.Log($"[Crafting] {monster.baseData.monsterName} 分解！ {soulRank}ランクの魂を獲得（年数:{monster.age}）");
+    }
+
+    /// <summary>分解で獲得できる魂のランクを返す（プレビュー用）</summary>
+    public MonsterRank GetSoulRankPreview(MonsterInstance monster)
+    {
+        return monster.GetSoulRank();
     }
 
     public Dictionary<MaterialType, int> GetDisassemblyResult(MonsterInstance monster)

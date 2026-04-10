@@ -160,6 +160,15 @@ public class DungeonManager : MonoBehaviour
         PlayerPos = newPos;
         TurnCount++;
 
+        // 隊列の魔物全員の年数+1
+        var gm = GameManager.Instance;
+        if (gm != null)
+        {
+            var formation = gm.Formation.GetFormation();
+            foreach (var monster in formation)
+                monster.age++;
+        }
+
         Map.SetExplored(PlayerPos.x, PlayerPos.y, ExploreRadius);
         UpdateEntityVisibility();
 

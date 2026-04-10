@@ -11,6 +11,7 @@ public class MonsterInstance
     public int currentRange;
     public int instanceId;
     public MonsterRank rank;
+    public int age; // 年数（ダンジョン内の歩数で加算）
 
     private static int nextId;
 
@@ -96,7 +97,12 @@ public class MonsterInstance
 
     public Color GetRankColor()
     {
-        switch (rank)
+        return GetRankColor(rank);
+    }
+
+    public static Color GetRankColor(MonsterRank r)
+    {
+        switch (r)
         {
             case MonsterRank.S: return new Color(1f, 0.85f, 0.2f);   // 金
             case MonsterRank.A: return new Color(0.9f, 0.3f, 0.9f);  // 紫
@@ -105,6 +111,22 @@ public class MonsterInstance
             case MonsterRank.D: return new Color(0.6f, 0.6f, 0.6f);  // グレー
             default: return Color.white;
         }
+    }
+
+    /// <summary>分解時に獲得できる魂のランクを年数から判定</summary>
+    public MonsterRank GetSoulRank()
+    {
+        // 年数が多いほど高ランクの魂
+        if (age >= 200) return MonsterRank.S;
+        if (age >= 100) return MonsterRank.A;
+        if (age >= 50)  return MonsterRank.B;
+        if (age >= 20)  return MonsterRank.C;
+        return MonsterRank.D;
+    }
+
+    public static string GetSoulRankLabel(MonsterRank rank)
+    {
+        return $"{rank}ランクの魂";
     }
 
     public bool TakeDamage(int amount)
